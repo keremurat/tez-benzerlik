@@ -1,0 +1,235 @@
+{
+  "description": "Example queries for YÖK Tez MCP Server",
+  "version": "0.1.0",
+  "examples": [
+    {
+      "name": "Basic Search - AI Theses",
+      "description": "Search for artificial intelligence related theses",
+      "natural_language": "Yapay zeka konusunda yapılan tezleri bul",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "yapay zeka",
+        "search_field": "tumu",
+        "max_results": 20
+      }
+    },
+    {
+      "name": "PhD Theses in 2023",
+      "description": "Find doctoral theses from 2023",
+      "natural_language": "2023 yılında yapılmış doktora tezlerini listele",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "*",
+        "year_start": 2023,
+        "year_end": 2023,
+        "thesis_type": "doktora",
+        "max_results": 50
+      }
+    },
+    {
+      "name": "Machine Learning Theses from ITU",
+      "description": "Search for machine learning theses from Istanbul Technical University",
+      "natural_language": "İstanbul Teknik Üniversitesi'nde makine öğrenmesi alanında yapılan tezleri ara",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "makine öğrenmesi",
+        "university": "İstanbul Teknik Üniversitesi",
+        "search_field": "konu",
+        "max_results": 30
+      }
+    },
+    {
+      "name": "Search by Author",
+      "description": "Find theses by a specific author",
+      "natural_language": "Ahmet Yılmaz'ın yazdığı tezleri bul",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "Ahmet Yılmaz",
+        "search_field": "yazar",
+        "max_results": 10
+      }
+    },
+    {
+      "name": "Search by Advisor",
+      "description": "Find theses supervised by a specific advisor",
+      "natural_language": "Prof. Dr. Mehmet Demir'in danışmanlığını yaptığı tezleri listele",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "Prof. Dr. Mehmet Demir",
+        "search_field": "danisman",
+        "max_results": 25
+      }
+    },
+    {
+      "name": "English Theses",
+      "description": "Find theses written in English",
+      "natural_language": "İngilizce yazılmış doktora tezlerini bul",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "*",
+        "language": "en",
+        "thesis_type": "doktora",
+        "max_results": 40
+      }
+    },
+    {
+      "name": "Recent Year Range",
+      "description": "Find theses from 2020-2023",
+      "natural_language": "2020-2023 yılları arasında derin öğrenme konusunda yapılan tezleri ara",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "derin öğrenme",
+        "year_start": 2020,
+        "year_end": 2023,
+        "max_results": 50
+      }
+    },
+    {
+      "name": "Permitted Theses Only",
+      "description": "Find only publicly accessible theses",
+      "natural_language": "Blokzincir konusunda izinli (erişilebilir) tezleri bul",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "blokzincir",
+        "permission_status": "izinli",
+        "max_results": 20
+      }
+    },
+    {
+      "name": "Get Thesis Details",
+      "description": "Retrieve detailed information about a specific thesis",
+      "natural_language": "123456 numaralı tezin detaylarını getir",
+      "tool": "get_thesis_details",
+      "parameters": {
+        "thesis_id": "123456"
+      }
+    },
+    {
+      "name": "Recent Theses - Last Week",
+      "description": "Get theses added in the last 7 days",
+      "natural_language": "Son 7 günde eklenen tezleri göster",
+      "tool": "get_recent_thesis",
+      "parameters": {
+        "days": 7,
+        "limit": 50
+      }
+    },
+    {
+      "name": "Recent Theses - Last Month",
+      "description": "Get theses added in the last 30 days",
+      "natural_language": "Son bir ayda YÖK'e eklenen tezleri listele",
+      "tool": "get_recent_thesis",
+      "parameters": {
+        "days": 30,
+        "limit": 100
+      }
+    },
+    {
+      "name": "University Statistics",
+      "description": "Get statistics for a specific university",
+      "natural_language": "Boğaziçi Üniversitesi'nin tez istatistiklerini çıkar",
+      "tool": "get_thesis_statistics",
+      "parameters": {
+        "university": "Boğaziçi Üniversitesi"
+      }
+    },
+    {
+      "name": "Year Statistics",
+      "description": "Get statistics for a specific year",
+      "natural_language": "2022 yılının tez istatistiklerini göster",
+      "tool": "get_thesis_statistics",
+      "parameters": {
+        "year": 2022
+      }
+    },
+    {
+      "name": "PhD Statistics",
+      "description": "Get statistics for doctoral theses",
+      "natural_language": "Doktora tezlerinin istatistiklerini getir",
+      "tool": "get_thesis_statistics",
+      "parameters": {
+        "thesis_type": "doktora"
+      }
+    },
+    {
+      "name": "University + Year Statistics",
+      "description": "Get statistics filtered by both university and year",
+      "natural_language": "Hacettepe Üniversitesi'nin 2023 yılı tez istatistiklerini analiz et",
+      "tool": "get_thesis_statistics",
+      "parameters": {
+        "university": "Hacettepe Üniversitesi",
+        "year": 2023
+      }
+    },
+    {
+      "name": "Medical Specialty Theses",
+      "description": "Find medical specialty theses",
+      "natural_language": "Tıpta uzmanlık tezlerini ara",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "*",
+        "thesis_type": "tipta_uzmanlik",
+        "max_results": 30
+      }
+    },
+    {
+      "name": "Art Proficiency Theses",
+      "description": "Find art proficiency theses",
+      "natural_language": "Sanatta yeterlik tezlerini listele",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "*",
+        "thesis_type": "sanatta_yeterlik",
+        "max_results": 20
+      }
+    },
+    {
+      "name": "Complex Multi-Filter Search",
+      "description": "Search with multiple filters applied",
+      "natural_language": "ODTÜ'de 2021-2023 arasında İngilizce yazılmış bilgisayar bilimleri alanında doktora tezlerini bul",
+      "tool": "search_thesis",
+      "parameters": {
+        "query": "bilgisayar bilimleri",
+        "university": "Orta Doğu Teknik Üniversitesi",
+        "year_start": 2021,
+        "year_end": 2023,
+        "thesis_type": "doktora",
+        "language": "en",
+        "max_results": 40
+      }
+    }
+  ],
+  "usage_tips": [
+    "Use 'tumu' for search_field to search across all fields",
+    "Wildcard '*' can be used as query for broad searches with filters",
+    "Turkish characters (ğ, ü, ş, ı, ö, ç) are fully supported",
+    "Results are cached for 1 hour - subsequent identical queries will be faster",
+    "Rate limiting ensures 1.5 seconds between requests to YÖK servers",
+    "For best results, combine multiple filters (university + year + type)",
+    "Use get_thesis_details after search to get full information about specific theses"
+  ],
+  "common_universities": [
+    "İstanbul Üniversitesi",
+    "İstanbul Teknik Üniversitesi",
+    "Boğaziçi Üniversitesi",
+    "Orta Doğu Teknik Üniversitesi",
+    "Ankara Üniversitesi",
+    "Hacettepe Üniversitesi",
+    "Ege Üniversitesi",
+    "Gazi Üniversitesi",
+    "Marmara Üniversitesi",
+    "Dokuz Eylül Üniversitesi"
+  ],
+  "common_subjects": [
+    "yapay zeka",
+    "makine öğrenmesi",
+    "derin öğrenme",
+    "veri bilimi",
+    "siber güvenlik",
+    "blokzincir",
+    "nesnelerin interneti",
+    "bulut bilişim",
+    "büyük veri",
+    "doğal dil işleme"
+  ]
+}

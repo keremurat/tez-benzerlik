@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tıp ve Yapay Zeka Tez Detay Sistemi</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .medical-gradient {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .ai-gradient {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #4b5563;
+            min-width: 150px;
+        }
+
+        .detail-value {
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-8">
+            <div class="text-center">
+                <div class="flex items-center justify-center space-x-4 mb-3">
+                    <i class="fas fa-stethoscope text-5xl"></i>
+                    <i class="fas fa-brain text-5xl"></i>
+                </div>
+                <h1 class="text-4xl font-bold mb-2">Tıp & Yapay Zeka Tez Detay Sistemi</h1>
+                <p class="text-lg opacity-90">YÖK Ulusal Tez Merkezi - Tıp Alanında Yapay Zeka Çalışmaları</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-12">
+
+        <!-- Info Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <div class="bg-white rounded-2xl shadow-xl p-6 border-l-4 border-blue-500">
+                <div class="flex items-center mb-3">
+                    <i class="fas fa-stethoscope text-3xl text-blue-500 mr-4"></i>
+                    <h3 class="text-xl font-bold text-gray-800">Tıp Alanı</h3>
+                </div>
+                <p class="text-gray-600">Tıp fakültelerinde yapılan tezler ve araştırmalar</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl p-6 border-l-4 border-pink-500">
+                <div class="flex items-center mb-3">
+                    <i class="fas fa-brain text-3xl text-pink-500 mr-4"></i>
+                    <h3 class="text-xl font-bold text-gray-800">Yapay Zeka</h3>
+                </div>
+                <p class="text-gray-600">AI, makine öğrenmesi ve derin öğrenme çalışmaları</p>
+            </div>
+        </div>
+
+        <!-- Thesis Number Input Section -->
+        <section class="mb-12">
+            <div class="bg-white rounded-2xl shadow-xl p-8 max-w-3xl mx-auto">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center flex items-center justify-center">
+                    <i class="fas fa-file-medical mr-3 text-purple-600"></i>
+                    Tez Detaylarını Görüntüle
+                </h2>
+
+                <p class="text-gray-600 text-center mb-8">
+                    Tıp alanında yapay zeka konusunda yazılmış bir tezin numarasını girerek detaylı bilgilerini görüntüleyebilirsiniz.
+                </p>
+
+                <!-- Thesis Number Form -->
+                <form id="thesisForm" class="space-y-6">
+                    <div>
+                        <label class="block text-lg font-semibold text-gray-700 mb-3">
+                            <i class="fas fa-hashtag mr-2 text-purple-600"></i>
+                            Tez Numarası
+                        </label>
+                        <input
+                            type="text"
+                            id="thesisNumber"
+                            required
+                            placeholder="Örn: 962889, 981536, 976617, 979219"
+                            class="search-input w-full px-6 py-4 text-lg border-2 border-gray-300 rounded-xl focus:outline-none transition"
+                        >
+                        <p class="text-sm text-gray-500 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            YÖK Tez Merkezi'nde kayıtlı olan tez numarasını giriniz
+                        </p>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button
+                        type="submit"
+                        class="w-full gradient-bg text-white px-8 py-5 text-lg rounded-xl font-semibold hover:opacity-90 transition flex items-center justify-center shadow-lg"
+                    >
+                        <i class="fas fa-search mr-3"></i>
+                        Tez Detaylarını Getir
+                    </button>
+                </form>
+
+                <!-- Sample Thesis IDs -->
+                <div class="mt-8 pt-6 border-t">
+                    <p class="text-sm font-semibold text-gray-700 mb-3">
+                        <i class="fas fa-lightbulb mr-2 text-yellow-500"></i>
+                        Örnek Tez Numaraları:
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="quickLoadThesis('962889')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
+                            962889
+                        </button>
+                        <button onclick="quickLoadThesis('981536')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
+                            981536
+                        </button>
+                        <button onclick="quickLoadThesis('976617')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
+                            976617
+                        </button>
+                        <button onclick="quickLoadThesis('979219')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
+                            979219
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden text-center py-12">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <p class="text-gray-700 text-lg font-medium">Tez detayları getiriliyor...</p>
+            <p class="text-gray-500 text-sm mt-2">Lütfen bekleyin</p>
+        </div>
+
+        <!-- Thesis Details Section -->
+        <div id="thesisDetails" class="hidden fade-in">
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden max-w-5xl mx-auto">
+                <!-- Header -->
+                <div class="gradient-bg text-white px-8 py-6">
+                    <h3 class="text-2xl font-bold flex items-center">
+                        <i class="fas fa-file-alt mr-3"></i>
+                        Tez Detayları
+                    </h3>
+                </div>
+
+                <!-- Content -->
+                <div id="detailsContainer" class="p-8">
+                    <!-- Details will be injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="hidden max-w-3xl mx-auto">
+            <div class="bg-red-50 border-l-4 border-red-500 rounded-xl p-6">
+                <div class="flex items-center mb-2">
+                    <i class="fas fa-exclamation-circle text-red-500 text-2xl mr-3"></i>
+                    <h4 class="text-lg font-bold text-red-800">Hata</h4>
+                </div>
+                <p id="errorText" class="text-red-700"></p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-16">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-300">
+                <i class="fas fa-graduation-cap mr-2"></i>
+                Tıp & Yapay Zeka Tez Detay Sistemi
+            </p>
+            <p class="text-gray-400 text-sm mt-2">
+                YÖK Ulusal Tez Merkezi verilerini kullanmaktadır
+            </p>
+            <div class="mt-4 flex items-center justify-center space-x-4">
+                <a href="https://tez.yok.gov.tr" target="_blank" class="text-purple-400 hover:text-purple-300 transition">
+                    <i class="fas fa-external-link-alt mr-1"></i>
+                    YÖK Resmi Sitesi
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
