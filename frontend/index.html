@@ -25,14 +25,6 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
-        .medical-gradient {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        .ai-gradient {
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        }
-
         .card-hover {
             transition: all 0.3s ease;
         }
@@ -79,6 +71,122 @@
         .detail-value {
             color: #1f2937;
         }
+
+        /* Tab styles */
+        .tab-btn {
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            border-bottom: 3px solid #667eea;
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .tab-btn:not(.active) {
+            border-bottom: 3px solid transparent;
+            color: #6b7280;
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: #4b5563;
+            border-bottom-color: #d1d5db;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Advanced search form */
+        .adv-select {
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .adv-input {
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .adv-input:focus, .adv-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+        }
+
+        /* Results table */
+        .results-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .results-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+
+        .results-table tbody tr:hover {
+            background-color: #f3f4f6;
+        }
+
+        .results-table .thesis-id-link {
+            color: #dc2626;
+            text-decoration: underline;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .results-table .thesis-id-link:hover {
+            color: #991b1b;
+        }
+
+        /* Pagination */
+        .page-btn {
+            min-width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            background: white;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .page-btn:hover:not(.active):not(:disabled) {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .page-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -99,112 +207,371 @@
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-12">
 
-        <!-- Info Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            <div class="bg-white rounded-2xl shadow-xl p-6 border-l-4 border-blue-500">
-                <div class="flex items-center mb-3">
-                    <i class="fas fa-stethoscope text-3xl text-blue-500 mr-4"></i>
-                    <h3 class="text-xl font-bold text-gray-800">Tıp Alanı</h3>
-                </div>
-                <p class="text-gray-600">Tıp fakültelerinde yapılan tezler ve araştırmalar</p>
-            </div>
-
-            <div class="bg-white rounded-2xl shadow-xl p-6 border-l-4 border-pink-500">
-                <div class="flex items-center mb-3">
-                    <i class="fas fa-brain text-3xl text-pink-500 mr-4"></i>
-                    <h3 class="text-xl font-bold text-gray-800">Yapay Zeka</h3>
-                </div>
-                <p class="text-gray-600">AI, makine öğrenmesi ve derin öğrenme çalışmaları</p>
-            </div>
-        </div>
-
-        <!-- Thesis Number Input Section -->
+        <!-- Search Section with Tabs -->
         <section class="mb-12">
-            <div class="bg-white rounded-2xl shadow-xl p-8 max-w-3xl mx-auto">
-                <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center flex items-center justify-center">
-                    <i class="fas fa-file-medical mr-3 text-purple-600"></i>
-                    Tez Detaylarını Görüntüle
-                </h2>
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden max-w-5xl mx-auto">
 
-                <p class="text-gray-600 text-center mb-8">
-                    Tıp alanında yapay zeka konusunda yazılmış bir tezin numarasını girerek detaylı bilgilerini görüntüleyebilirsiniz.
-                </p>
-
-                <!-- Thesis Number Form -->
-                <form id="thesisForm" class="space-y-6">
-                    <div>
-                        <label class="block text-lg font-semibold text-gray-700 mb-3">
-                            <i class="fas fa-hashtag mr-2 text-purple-600"></i>
-                            Tez Numarası
-                        </label>
-                        <input
-                            type="text"
-                            id="thesisNumber"
-                            required
-                            placeholder="Örn: 962889, 981536, 976617, 979219"
-                            class="search-input w-full px-6 py-4 text-lg border-2 border-gray-300 rounded-xl focus:outline-none transition"
-                        >
-                        <p class="text-sm text-gray-500 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            YÖK Tez Merkezi'nde kayıtlı olan tez numarasını giriniz
-                        </p>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <button
-                        type="submit"
-                        class="w-full gradient-bg text-white px-8 py-5 text-lg rounded-xl font-semibold hover:opacity-90 transition flex items-center justify-center shadow-lg"
-                    >
-                        <i class="fas fa-search mr-3"></i>
-                        Tez Detaylarını Getir
+                <!-- Tabs -->
+                <div class="flex border-b">
+                    <button class="tab-btn active flex-1 py-4 px-6 text-center text-lg" onclick="switchTab('tezNo')">
+                        <i class="fas fa-hashtag mr-2"></i>
+                        Tez Numarası ile Arama
                     </button>
-                </form>
+                    <button class="tab-btn flex-1 py-4 px-6 text-center text-lg" onclick="switchTab('gelismis')">
+                        <i class="fas fa-search-plus mr-2"></i>
+                        Gelişmiş Tarama
+                    </button>
+                </div>
 
-                <!-- Sample Thesis IDs -->
-                <div class="mt-8 pt-6 border-t">
-                    <p class="text-sm font-semibold text-gray-700 mb-3">
-                        <i class="fas fa-lightbulb mr-2 text-yellow-500"></i>
-                        Örnek Tez Numaraları:
+                <!-- Tab 1: Tez Numarası -->
+                <div id="tab-tezNo" class="tab-content active p-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                        <i class="fas fa-file-medical mr-2 text-purple-600"></i>
+                        Tez Detaylarını Görüntüle
+                    </h2>
+
+                    <p class="text-gray-600 text-center mb-6">
+                        Tez numarasını girerek detaylı bilgilerini görüntüleyebilirsiniz.
                     </p>
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="quickLoadThesis('962889')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
-                            962889
+
+                    <form id="thesisForm" class="space-y-6 max-w-2xl mx-auto">
+                        <div>
+                            <label class="block text-lg font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-hashtag mr-2 text-purple-600"></i>
+                                Tez Numarası
+                            </label>
+                            <input
+                                type="text"
+                                id="thesisNumber"
+                                required
+                                placeholder="Örn: 962889, 981536, 976617, 979219"
+                                class="search-input w-full px-6 py-4 text-lg border-2 border-gray-300 rounded-xl focus:outline-none transition"
+                            >
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="w-full gradient-bg text-white px-8 py-4 text-lg rounded-xl font-semibold hover:opacity-90 transition flex items-center justify-center shadow-lg"
+                        >
+                            <i class="fas fa-search mr-3"></i>
+                            Tez Detaylarını Getir
                         </button>
-                        <button onclick="quickLoadThesis('981536')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
-                            981536
-                        </button>
-                        <button onclick="quickLoadThesis('976617')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
-                            976617
-                        </button>
-                        <button onclick="quickLoadThesis('979219')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
-                            979219
-                        </button>
+                    </form>
+
+                    <!-- Sample Thesis IDs -->
+                    <div class="mt-8 pt-6 border-t max-w-2xl mx-auto">
+                        <p class="text-sm font-semibold text-gray-700 mb-3">
+                            <i class="fas fa-lightbulb mr-2 text-yellow-500"></i>
+                            Örnek Tez Numaraları:
+                        </p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="quickLoadThesis('962889')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
+                                962889
+                            </button>
+                            <button onclick="quickLoadThesis('981536')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
+                                981536
+                            </button>
+                            <button onclick="quickLoadThesis('976617')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
+                                976617
+                            </button>
+                            <button onclick="quickLoadThesis('979219')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-sm font-medium">
+                                979219
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Tab 2: Gelişmiş Tarama -->
+                <div id="tab-gelismis" class="tab-content p-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                        <i class="fas fa-search-plus mr-2 text-purple-600"></i>
+                        Gelişmiş Tarama
+                    </h2>
+
+                    <form id="advancedSearchForm" class="space-y-4">
+                        <!-- Keyword Rows -->
+                        <div class="bg-gray-50 rounded-xl p-5 space-y-3">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Aranacak Kelime(ler)</label>
+
+                            <!-- Row 1 -->
+                            <div class="grid grid-cols-12 gap-2 items-center">
+                                <div class="col-span-4">
+                                    <input type="text" id="keyword1" placeholder="Aranacak kelime..." class="adv-input">
+                                </div>
+                                <div class="col-span-2">
+                                    <select id="searchField1" class="adv-select w-full">
+                                        <option value="1">Tez Adı</option>
+                                        <option value="2">Yazar</option>
+                                        <option value="3">Danışman</option>
+                                        <option value="4">Konu</option>
+                                        <option value="5">Dizin</option>
+                                        <option value="6">Özet</option>
+                                        <option value="7" selected>Tümü</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-2">
+                                    <select id="searchType1" class="adv-select w-full">
+                                        <option value="1">Sadece yazılan şekilde</option>
+                                        <option value="2">İçinde geçsin</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-4"></div>
+                            </div>
+
+                            <!-- Row 2 -->
+                            <div class="grid grid-cols-12 gap-2 items-center">
+                                <div class="col-span-1">
+                                    <select id="operator2" class="adv-select w-full text-sm">
+                                        <option value="and">ve</option>
+                                        <option value="or">veya</option>
+                                        <option value="not">içermesin</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-3">
+                                    <input type="text" id="keyword2" placeholder="Aranacak kelime..." class="adv-input">
+                                </div>
+                                <div class="col-span-2">
+                                    <select id="searchField2" class="adv-select w-full">
+                                        <option value="1">Tez Adı</option>
+                                        <option value="2">Yazar</option>
+                                        <option value="3">Danışman</option>
+                                        <option value="4">Konu</option>
+                                        <option value="5">Dizin</option>
+                                        <option value="6">Özet</option>
+                                        <option value="7" selected>Tümü</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-2">
+                                    <select id="searchType2" class="adv-select w-full">
+                                        <option value="1">Sadece yazılan şekilde</option>
+                                        <option value="2">İçinde geçsin</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-4"></div>
+                            </div>
+
+                            <!-- Row 3 -->
+                            <div class="grid grid-cols-12 gap-2 items-center">
+                                <div class="col-span-1">
+                                    <select id="operator3" class="adv-select w-full text-sm">
+                                        <option value="and">ve</option>
+                                        <option value="or">veya</option>
+                                        <option value="not">içermesin</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-3">
+                                    <input type="text" id="keyword3" placeholder="Aranacak kelime..." class="adv-input">
+                                </div>
+                                <div class="col-span-2">
+                                    <select id="searchField3" class="adv-select w-full">
+                                        <option value="1">Tez Adı</option>
+                                        <option value="2">Yazar</option>
+                                        <option value="3">Danışman</option>
+                                        <option value="4">Konu</option>
+                                        <option value="5">Dizin</option>
+                                        <option value="6">Özet</option>
+                                        <option value="7" selected>Tümü</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-2">
+                                    <select id="searchType3" class="adv-select w-full">
+                                        <option value="1">Sadece yazılan şekilde</option>
+                                        <option value="2">İçinde geçsin</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-4"></div>
+                            </div>
+                        </div>
+
+                        <!-- Filters Row -->
+                        <div class="bg-gray-50 rounded-xl p-5">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <!-- Yıl -->
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Yıl</label>
+                                    <div class="flex items-center gap-1">
+                                        <select id="yearFrom" class="adv-select flex-1">
+                                            <option value="">Seçiniz</option>
+                                        </select>
+                                        <span class="text-gray-500 text-xs">&lt;=Yıl&lt;=</span>
+                                        <select id="yearTo" class="adv-select flex-1">
+                                            <option value="">Seçiniz</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Tez Türü -->
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Tez Türü</label>
+                                    <select id="thesisType" class="adv-select w-full">
+                                        <option value="">Seçiniz</option>
+                                        <option value="1">Yüksek Lisans</option>
+                                        <option value="2">Doktora</option>
+                                        <option value="3">Tıpta Uzmanlık</option>
+                                        <option value="4">Sanatta Yeterlik</option>
+                                        <option value="5">Diş Hekimliği Uzmanlık</option>
+                                        <option value="6">Tıpta Yan Dal Uzmanlık</option>
+                                        <option value="7">Eczacılıkta Uzmanlık</option>
+                                    </select>
+                                </div>
+
+                                <!-- İzin Durumu -->
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">İzin Durumu</label>
+                                    <select id="permissionStatus" class="adv-select w-full">
+                                        <option value="">Seçiniz</option>
+                                        <option value="1">İzinli</option>
+                                        <option value="2">İzinsiz</option>
+                                    </select>
+                                </div>
+
+                                <!-- Grubu -->
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Grubu</label>
+                                    <select id="groupType" class="adv-select w-full">
+                                        <option value="">Seçiniz</option>
+                                        <option value="F">Fen</option>
+                                        <option value="S">Sosyal</option>
+                                        <option value="T">Tıp</option>
+                                    </select>
+                                </div>
+
+                                <!-- Dil -->
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Dil</label>
+                                    <select id="language" class="adv-select w-full">
+                                        <option value="">Seçiniz</option>
+                                        <option value="1">Türkçe</option>
+                                        <option value="2">İngilizce</option>
+                                        <option value="3">Arapça</option>
+                                        <option value="4">Almanca</option>
+                                        <option value="5">Fransızca</option>
+                                        <option value="6">İspanyolca</option>
+                                        <option value="7">İtalyanca</option>
+                                        <option value="8">Rusça</option>
+                                        <option value="9">Lehçe</option>
+                                        <option value="10">Çince</option>
+                                        <option value="11">Kürtçe</option>
+                                        <option value="12">Azerice</option>
+                                        <option value="13">Farsça</option>
+                                    </select>
+                                </div>
+
+                                <!-- Durumu -->
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Durumu</label>
+                                    <select id="status" class="adv-select w-full">
+                                        <option value="">Seçiniz</option>
+                                        <option value="3">Onaylandı</option>
+                                        <option value="1">Hazırlanıyor</option>
+                                        <option value="0">Tümü</option>
+                                    </select>
+                                </div>
+
+                                <!-- Üniversite -->
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Üniversite</label>
+                                    <input type="text" id="university" placeholder="Üniversite adı..." class="adv-input">
+                                </div>
+
+                                <!-- Enstitü -->
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Enstitü</label>
+                                    <input type="text" id="institute" placeholder="Enstitü adı..." class="adv-input">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="flex gap-3 justify-center pt-2">
+                            <button
+                                type="submit"
+                                class="gradient-bg text-white px-10 py-3 text-lg rounded-xl font-semibold hover:opacity-90 transition flex items-center shadow-lg"
+                            >
+                                <i class="fas fa-search mr-2"></i>
+                                Bul
+                            </button>
+                            <button
+                                type="button"
+                                onclick="clearAdvancedSearch()"
+                                class="bg-gray-500 text-white px-10 py-3 text-lg rounded-xl font-semibold hover:bg-gray-600 transition flex items-center"
+                            >
+                                <i class="fas fa-eraser mr-2"></i>
+                                Temizle
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
             </div>
         </section>
 
         <!-- Loading Indicator -->
         <div id="loadingIndicator" class="hidden text-center py-12">
             <div class="loading-spinner mx-auto mb-4"></div>
-            <p class="text-gray-700 text-lg font-medium">Tez detayları getiriliyor...</p>
-            <p class="text-gray-500 text-sm mt-2">Lütfen bekleyin</p>
+            <p class="text-gray-700 text-lg font-medium" id="loadingText">Tez detayları getiriliyor...</p>
+            <p class="text-gray-500 text-sm mt-2">YÖK sisteminden veriler alınıyor, lütfen bekleyin</p>
+        </div>
+
+        <!-- Search Results Section -->
+        <div id="searchResults" class="hidden fade-in mb-12">
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto">
+                <div class="gradient-bg text-white px-8 py-4 flex items-center justify-between">
+                    <h3 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-list mr-3"></i>
+                        Arama Sonuçları
+                    </h3>
+                    <span id="resultCount" class="bg-white/20 px-3 py-1 rounded-full text-sm"></span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="results-table w-full">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Tez No</th>
+                                <th>Yazar</th>
+                                <th>Yıl</th>
+                                <th>Tez Adı</th>
+                                <th>Tez Türü</th>
+                                <th>Konu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <div id="paginationContainer" class="px-6 py-4 border-t flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50">
+                    <div class="flex items-center gap-2 text-sm text-gray-600">
+                        <span>Sayfa boyutu:</span>
+                        <select id="pageSize" class="adv-select text-sm" onchange="changePageSize()">
+                            <option value="25">25</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="250">250</option>
+                            <option value="500">500</option>
+                        </select>
+                        <span id="pageInfo" class="ml-2"></span>
+                    </div>
+                    <div id="pageButtons" class="flex items-center gap-1 flex-wrap justify-center">
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Thesis Details Section -->
         <div id="thesisDetails" class="hidden fade-in">
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden max-w-5xl mx-auto">
-                <!-- Header -->
-                <div class="gradient-bg text-white px-8 py-6">
+                <div class="gradient-bg text-white px-8 py-6 flex items-center justify-between">
                     <h3 class="text-2xl font-bold flex items-center">
                         <i class="fas fa-file-alt mr-3"></i>
                         Tez Detayları
                     </h3>
+                    <button onclick="closeThesisDetails()" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition text-sm">
+                        <i class="fas fa-arrow-left mr-1"></i> Sonuçlara Dön
+                    </button>
                 </div>
-
-                <!-- Content -->
                 <div id="detailsContainer" class="p-8">
-                    <!-- Details will be injected here -->
                 </div>
             </div>
         </div>

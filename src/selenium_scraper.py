@@ -738,6 +738,323 @@ class SeleniumYOKScraper:
 
         return details
 
+    async def advanced_search(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Perform advanced search on YÖK using Gelişmiş Tarama form.
+        """
+        await self.rate_limiter.wait()
+
+        try:
+            loop = asyncio.get_event_loop()
+            results = await loop.run_in_executor(
+                None,
+                self._advanced_search_sync,
+                params
+            )
+            return results
+
+        except Exception as e:
+            logger.error(f"Advanced search failed: {str(e)}", exc_info=True)
+            raise YOKThesisScraperError(f"Advanced search error: {str(e)}")
+
+    def _advanced_search_sync(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Synchronous advanced search using Gelişmiş Tarama."""
+        driver = self._get_driver()
+
+        try:
+            logger.info("Navigating to YÖK search page for advanced search")
+            driver.get(self.SEARCH_URL)
+            time.sleep(3)
+
+            wait = WebDriverWait(driver, 15)
+
+            # Click Gelişmiş Tarama tab (tabs-2)
+            adv_tab = wait.until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "a[href='#tabs-2']"))
+            )
+            adv_tab.click()
+            logger.info("Clicked Gelişmiş Tarama tab")
+            time.sleep(1)
+
+            # Get tabs-2 container to scope all element searches within it
+            tabs2 = driver.find_element(By.ID, "tabs-2")
+
+            # Helper to find element by name within tabs-2
+            def find_in_tabs2(name):
+                return tabs2.find_element(By.CSS_SELECTOR, f"[name='{name}']")
+
+            # --- Fill keyword rows ---
+            # YÖK form field names: keyword (1st), keyword1 (2nd), keyword2 (3rd)
+            kw1 = params.get('keyword1', '')
+            if kw1:
+                el = find_in_tabs2("keyword")
+                el.clear()
+                el.send_keys(kw1)
+                logger.info(f"Entered keyword: {kw1}")
+
+            # Set search field for 1st keyword (nevi)
+            sf1 = params.get('searchField1', '')
+            if sf1:
+                try:
+                    Select(find_in_tabs2("nevi")).select_by_value(str(sf1))
+                except Exception:
+                    pass
+
+            # Set search type for 1st keyword (tip)
+            st1 = params.get('searchType1', '')
+            if st1:
+                try:
+                    Select(find_in_tabs2("tip")).select_by_value(str(st1))
+                except Exception:
+                    pass
+
+            # Operator between 1st and 2nd (ops_field)
+            op2 = params.get('operator2', '')
+            if op2:
+                try:
+                    Select(find_in_tabs2("ops_field")).select_by_value(str(op2))
+                except Exception:
+                    pass
+
+            # 2nd keyword (keyword1 in YÖK form)
+            kw2 = params.get('keyword2', '')
+            if kw2:
+                el = find_in_tabs2("keyword1")
+                el.clear()
+                el.send_keys(kw2)
+
+            # Search field for 2nd keyword (nevi2)
+            sf2 = params.get('searchField2', '')
+            if sf2:
+                try:
+                    Select(find_in_tabs2("nevi2")).select_by_value(str(sf2))
+                except Exception:
+                    pass
+
+            # Search type for 2nd keyword (tip2)
+            st2 = params.get('searchType2', '')
+            if st2:
+                try:
+                    Select(find_in_tabs2("tip2")).select_by_value(str(st2))
+                except Exception:
+                    pass
+
+            # Operator between 2nd and 3rd (ops_field1)
+            op3 = params.get('operator3', '')
+            if op3:
+                try:
+                    Select(find_in_tabs2("ops_field1")).select_by_value(str(op3))
+                except Exception:
+                    pass
+
+            # 3rd keyword (keyword2 in YÖK form)
+            kw3 = params.get('keyword3', '')
+            if kw3:
+                el = find_in_tabs2("keyword2")
+                el.clear()
+                el.send_keys(kw3)
+
+            # Search field for 3rd keyword (nevi3)
+            sf3 = params.get('searchField3', '')
+            if sf3:
+                try:
+                    Select(find_in_tabs2("nevi3")).select_by_value(str(sf3))
+                except Exception:
+                    pass
+
+            # Search type for 3rd keyword (tip3)
+            st3 = params.get('searchType3', '')
+            if st3:
+                try:
+                    Select(find_in_tabs2("tip3")).select_by_value(str(st3))
+                except Exception:
+                    pass
+
+            # --- Set filter dropdowns (scoped within tabs-2) ---
+            # Year from (yil1)
+            year_from = params.get('yearFrom', '')
+            if year_from:
+                try:
+                    Select(find_in_tabs2("yil1")).select_by_value(str(year_from))
+                except Exception:
+                    pass
+
+            # Year to (yil2)
+            year_to = params.get('yearTo', '')
+            if year_to:
+                try:
+                    Select(find_in_tabs2("yil2")).select_by_value(str(year_to))
+                except Exception:
+                    pass
+
+            # Thesis type (Tur)
+            thesis_type = params.get('thesisType', '')
+            if thesis_type:
+                try:
+                    Select(find_in_tabs2("Tur")).select_by_value(str(thesis_type))
+                except Exception:
+                    pass
+
+            # Permission status (izin)
+            perm = params.get('permissionStatus', '')
+            if perm:
+                try:
+                    Select(find_in_tabs2("izin")).select_by_value(str(perm))
+                except Exception:
+                    pass
+
+            # Group (EnstituGrubu)
+            group = params.get('groupType', '')
+            if group:
+                try:
+                    Select(find_in_tabs2("EnstituGrubu")).select_by_value(str(group))
+                except Exception:
+                    pass
+
+            # Language (Dil)
+            lang = params.get('language', '')
+            if lang:
+                try:
+                    Select(find_in_tabs2("Dil")).select_by_value(str(lang))
+                except Exception:
+                    pass
+
+            # Status (Durum)
+            status = params.get('status', '')
+            if status:
+                try:
+                    Select(find_in_tabs2("Durum")).select_by_value(str(status))
+                except Exception:
+                    pass
+
+            # Submit search
+            submit_btn = tabs2.find_element(By.CSS_SELECTOR, "input[type='submit']")
+            submit_btn.click()
+            logger.info("Submitted advanced search")
+
+            # Wait for results to load (JavaScript populated)
+            time.sleep(6)
+
+            # Extract ALL results from JavaScript source
+            # YÖK uses WaTable plugin which only displays 30 rows at a time,
+            # but all data is embedded in the page source as var doc = {...}; rows.push(doc);
+            html = driver.page_source
+
+            # Extract total found count from page text
+            import re
+            total_found = 0
+            total_match = re.search(r'(\d+)\s*kayıt bulundu', html)
+            if total_match:
+                total_found = int(total_match.group(1))
+                logger.info(f"YÖK reports {total_found} total records found")
+
+            results = self._parse_all_results_from_js(html)
+            logger.info(f"Parsed {len(results)} total results from JS source")
+            return {"results": results, "total_found": total_found}
+
+        except Exception as e:
+            logger.error(f"Advanced search error: {str(e)}", exc_info=True)
+            return []
+
+    def _parse_all_results_from_js(self, html: str) -> List[Dict[str, Any]]:
+        """
+        Parse ALL search results from the JavaScript source code.
+
+        YÖK embeds all results in JS as:
+            var doc = {
+                rowNum: N,
+                userId: "<span onclick=tezDetay(...)>THESIS_ID</span>",
+                name: "AUTHOR",
+                age: "YEAR",
+                weight: "TITLE<br><span>TITLE_TR</span>",
+                uni: "UNIVERSITY",
+                height: "LANGUAGE",
+                important: "THESIS_TYPE",
+                someDate: "SUBJECT",
+            };
+            rows.push(doc);
+
+        WaTable only displays 30 rows at a time, but all data is in the source.
+        """
+        import re
+
+        results = []
+
+        # Extract all var doc = { ... }; blocks
+        doc_pattern = re.compile(
+            r'var\s+doc\s*=\s*\{(.*?)\};\s*rows\.push\(doc\)',
+            re.DOTALL
+        )
+        doc_blocks = doc_pattern.findall(html)
+
+        if not doc_blocks:
+            logger.warning("No doc blocks found in JS source")
+            return results
+
+        logger.info(f"Found {len(doc_blocks)} doc blocks in JS source")
+
+        for block in doc_blocks:
+            try:
+                # Extract thesis_id from span: >THESIS_ID</span>
+                thesis_id = ""
+                id_match = re.search(r'>(\d+)</span>', block)
+                if id_match:
+                    thesis_id = id_match.group(1)
+
+                # name = author
+                author = ""
+                name_match = re.search(r'name\s*:\s*"([^"]*)"', block)
+                if name_match:
+                    author = name_match.group(1).strip()
+
+                # age = year
+                year = ""
+                age_match = re.search(r'age\s*:\s*"([^"]*)"', block)
+                if age_match:
+                    year = age_match.group(1).strip()
+
+                # weight = title (may contain <br><span>title_tr</span>)
+                title = ""
+                title_tr = ""
+                weight_match = re.search(r'weight\s*:\s*"(.*?)",?\s*\n', block, re.DOTALL)
+                if weight_match:
+                    raw_title = weight_match.group(1).strip()
+                    if '<br>' in raw_title:
+                        parts = raw_title.split('<br>', 1)
+                        title = re.sub(r'<[^>]+>', '', parts[0]).strip()
+                        title_tr = re.sub(r'<[^>]+>', '', parts[1]).strip()
+                    else:
+                        title = re.sub(r'<[^>]+>', '', raw_title).strip()
+
+                # important = thesis_type
+                thesis_type = ""
+                imp_match = re.search(r'important\s*:\s*"([^"]*)"', block)
+                if imp_match:
+                    thesis_type = imp_match.group(1).strip()
+
+                # someDate = subject
+                subject = ""
+                subj_match = re.search(r'someDate\s*:\s*"([^"]*)"', block)
+                if subj_match:
+                    subject = subj_match.group(1).strip()
+
+                if thesis_id or title:
+                    results.append({
+                        "thesis_id": thesis_id,
+                        "author": author,
+                        "year": year,
+                        "title": title,
+                        "title_tr": title_tr,
+                        "thesis_type": thesis_type,
+                        "subject": subject
+                    })
+
+            except Exception as e:
+                logger.debug(f"Error parsing doc block: {e}")
+                continue
+
+        return results
+
     async def get_recent_thesis(
         self,
         days: int = 15,

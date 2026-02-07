@@ -8,26 +8,73 @@ const API_BASE_URL = 'http://localhost:8000';
 // DOM Elements
 const thesisForm = document.getElementById('thesisForm');
 const thesisNumberInput = document.getElementById('thesisNumber');
+const advancedSearchForm = document.getElementById('advancedSearchForm');
 const loadingIndicator = document.getElementById('loadingIndicator');
+const loadingText = document.getElementById('loadingText');
 const thesisDetails = document.getElementById('thesisDetails');
 const detailsContainer = document.getElementById('detailsContainer');
+const searchResults = document.getElementById('searchResults');
+const resultsTableBody = document.getElementById('resultsTableBody');
+const resultCount = document.getElementById('resultCount');
 const errorMessage = document.getElementById('errorMessage');
 const errorText = document.getElementById('errorText');
+
+// Pagination state
+let allResults = [];
+let totalFound = 0;
+let currentPage = 1;
+let pageSize = 50;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Tıp & Yapay Zeka Tez Detay Sistemi başlatıldı');
 
-    // Form submit event
     thesisForm.addEventListener('submit', handleFormSubmit);
+    advancedSearchForm.addEventListener('submit', handleAdvancedSearch);
+
+    populateYearSelects();
 });
 
 /**
- * Handle form submission
+ * Populate year select dropdowns (2026 to 1980)
+ */
+function populateYearSelects() {
+    const yearFrom = document.getElementById('yearFrom');
+    const yearTo = document.getElementById('yearTo');
+    const currentYear = new Date().getFullYear();
+
+    for (let y = currentYear; y >= 1980; y--) {
+        yearFrom.add(new Option(y, y));
+        yearTo.add(new Option(y, y));
+    }
+}
+
+/**
+ * Switch between tabs
+ */
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+
+    const buttons = document.querySelectorAll('.tab-btn');
+    if (tabName === 'tezNo') {
+        buttons[0].classList.add('active');
+    } else {
+        buttons[1].classList.add('active');
+    }
+
+    hideError();
+    searchResults.classList.add('hidden');
+    thesisDetails.classList.add('hidden');
+}
+
+/**
+ * Handle thesis number form submission
  */
 async function handleFormSubmit(e) {
     e.preventDefault();
-
     const thesisNumber = thesisNumberInput.value.trim();
 
     if (!thesisNumber) {
@@ -43,6 +90,7 @@ async function handleFormSubmit(e) {
  */
 function quickLoadThesis(thesisId) {
     thesisNumberInput.value = thesisId;
+    switchTab('tezNo');
     loadThesisDetails(thesisId);
 }
 
@@ -51,14 +99,13 @@ function quickLoadThesis(thesisId) {
  */
 async function loadThesisDetails(thesisId) {
     try {
-        // Hide previous results and errors
         hideError();
         thesisDetails.classList.add('hidden');
+        searchResults.classList.add('hidden');
 
-        // Show loading
+        loadingText.textContent = 'Tez detayları getiriliyor...';
         loadingIndicator.classList.remove('hidden');
 
-        // Fetch thesis details
         const response = await fetch(`${API_BASE_URL}/api/thesis/${thesisId}`);
 
         if (!response.ok) {
@@ -68,32 +115,20 @@ async function loadThesisDetails(thesisId) {
 
         const data = await response.json();
 
-        // Check if thesis was actually found
         if (data.title === "Detaylar yüklenemedi" || data.author === "Bilinmiyor") {
             loadingIndicator.classList.add('hidden');
             showError(`
                 <strong>Tez bulunamadı: ${thesisId}</strong><br><br>
                 Bu tez numarası YÖK sisteminde bulunamadı.<br><br>
                 <strong>Olası nedenler:</strong><br>
-                • Tez numarası yanlış yazılmış olabilir<br>
-                • Tez henüz YÖK sistemine kayıt edilmemiş olabilir<br>
-                • Tez gizli/erişime kapalı olabilir<br><br>
-                <strong>Örnek tez numaraları:</strong><br>
-                <button onclick="quickLoadThesis('962889')" class="text-purple-600 underline hover:text-purple-800">962889</button>,
-                <button onclick="quickLoadThesis('981536')" class="text-purple-600 underline hover:text-purple-800">981536</button>,
-                <button onclick="quickLoadThesis('976617')" class="text-purple-600 underline hover:text-purple-800">976617</button>,
-                <button onclick="quickLoadThesis('979219')" class="text-purple-600 underline hover:text-purple-800">979219</button>
+                &bull; Tez numarası yanlış yazılmış olabilir<br>
+                &bull; Tez henüz YÖK sistemine kayıt edilmemiş olabilir
             `);
             return;
         }
 
-        // Display thesis details
         displayThesisDetails(data);
-
-        // Hide loading
         loadingIndicator.classList.add('hidden');
-
-        // Scroll to results
         thesisDetails.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     } catch (error) {
@@ -101,6 +136,247 @@ async function loadThesisDetails(thesisId) {
         loadingIndicator.classList.add('hidden');
         showError(`Tez detayları yüklenirken hata oluştu: ${error.message}`);
     }
+}
+
+/**
+ * Handle advanced search form submission
+ */
+async function handleAdvancedSearch(e) {
+    e.preventDefault();
+
+    const params = {
+        keyword1: document.getElementById('keyword1').value.trim(),
+        searchField1: document.getElementById('searchField1').value,
+        searchType1: document.getElementById('searchType1').value,
+        operator2: document.getElementById('operator2').value,
+        keyword2: document.getElementById('keyword2').value.trim(),
+        searchField2: document.getElementById('searchField2').value,
+        searchType2: document.getElementById('searchType2').value,
+        operator3: document.getElementById('operator3').value,
+        keyword3: document.getElementById('keyword3').value.trim(),
+        searchField3: document.getElementById('searchField3').value,
+        searchType3: document.getElementById('searchType3').value,
+        yearFrom: document.getElementById('yearFrom').value,
+        yearTo: document.getElementById('yearTo').value,
+        thesisType: document.getElementById('thesisType').value,
+        permissionStatus: document.getElementById('permissionStatus').value,
+        groupType: document.getElementById('groupType').value,
+        language: document.getElementById('language').value,
+        status: document.getElementById('status').value,
+        university: document.getElementById('university').value.trim(),
+        institute: document.getElementById('institute').value.trim(),
+    };
+
+    if (!params.keyword1 && !params.yearFrom && !params.thesisType && !params.university) {
+        showError('Lütfen en az bir arama kriteri giriniz (anahtar kelime, yıl, tez türü veya üniversite)');
+        return;
+    }
+
+    try {
+        hideError();
+        thesisDetails.classList.add('hidden');
+        searchResults.classList.add('hidden');
+
+        loadingText.textContent = 'Gelişmiş arama yapılıyor...';
+        loadingIndicator.classList.remove('hidden');
+
+        const response = await fetch(`${API_BASE_URL}/api/advanced-search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP ${response.status}: Arama yapılamadı`);
+        }
+
+        const data = await response.json();
+        loadingIndicator.classList.add('hidden');
+
+        if (data.results && data.results.length > 0) {
+            allResults = data.results;
+            totalFound = data.total_found || data.results.length;
+            currentPage = 1;
+            pageSize = parseInt(document.getElementById('pageSize').value);
+            renderResults();
+        } else {
+            showError('Arama kriterlerine uygun sonuç bulunamadı. Lütfen farklı kriterlerle deneyin.');
+        }
+
+    } catch (error) {
+        console.error('Gelişmiş arama hatası:', error);
+        loadingIndicator.classList.add('hidden');
+        showError(`Arama sırasında hata oluştu: ${error.message}`);
+    }
+}
+
+/**
+ * Render current page of results + pagination controls
+ */
+function renderResults() {
+    const totalPages = Math.ceil(allResults.length / pageSize);
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const start = (currentPage - 1) * pageSize;
+    const end = Math.min(start + pageSize, allResults.length);
+    const pageResults = allResults.slice(start, end);
+
+    // Update header count
+    if (totalFound > allResults.length) {
+        resultCount.textContent = `${allResults.length} / ${totalFound} sonuç`;
+    } else {
+        resultCount.textContent = `${allResults.length} sonuç`;
+    }
+
+    // Render table rows
+    let html = '';
+    pageResults.forEach((r, idx) => {
+        const globalIdx = start + idx + 1;
+        html += `
+            <tr>
+                <td>${globalIdx}</td>
+                <td>
+                    <span class="thesis-id-link" onclick="loadThesisDetails('${escapeHtml(r.thesis_id)}')">${escapeHtml(r.thesis_id)}</span>
+                </td>
+                <td>${escapeHtml(r.author || '')}</td>
+                <td>${escapeHtml(r.year || '')}</td>
+                <td>
+                    ${escapeHtml(r.title || '')}
+                    ${r.title_tr ? '<br><span class="text-gray-500 italic text-xs">' + escapeHtml(r.title_tr) + '</span>' : ''}
+                </td>
+                <td>${escapeHtml(r.thesis_type || '')}</td>
+                <td class="text-xs">${escapeHtml(r.subject || '')}</td>
+            </tr>
+        `;
+    });
+    resultsTableBody.innerHTML = html;
+
+    // Page info
+    document.getElementById('pageInfo').textContent =
+        `${start + 1}-${end} arası gösteriliyor (toplam ${allResults.length})`;
+
+    // Render pagination buttons
+    renderPagination(totalPages);
+
+    searchResults.classList.remove('hidden');
+    searchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * Render pagination buttons
+ */
+function renderPagination(totalPages) {
+    const container = document.getElementById('pageButtons');
+
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous
+    html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+        <i class="fas fa-chevron-left text-xs"></i>
+    </button>`;
+
+    // Page numbers with ellipsis
+    const pages = getPageNumbers(currentPage, totalPages);
+    pages.forEach(p => {
+        if (p === '...') {
+            html += `<span class="px-1 text-gray-400">...</span>`;
+        } else {
+            html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
+        }
+    });
+
+    // Next
+    html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+        <i class="fas fa-chevron-right text-xs"></i>
+    </button>`;
+
+    container.innerHTML = html;
+}
+
+/**
+ * Get page numbers to display with ellipsis
+ */
+function getPageNumbers(current, total) {
+    if (total <= 7) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    const pages = [];
+
+    // Always show first page
+    pages.push(1);
+
+    if (current > 3) {
+        pages.push('...');
+    }
+
+    // Pages around current
+    const rangeStart = Math.max(2, current - 1);
+    const rangeEnd = Math.min(total - 1, current + 1);
+
+    for (let i = rangeStart; i <= rangeEnd; i++) {
+        pages.push(i);
+    }
+
+    if (current < total - 2) {
+        pages.push('...');
+    }
+
+    // Always show last page
+    if (total > 1) {
+        pages.push(total);
+    }
+
+    return pages;
+}
+
+/**
+ * Navigate to a specific page
+ */
+function goToPage(page) {
+    const totalPages = Math.ceil(allResults.length / pageSize);
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    renderResults();
+}
+
+/**
+ * Handle page size change
+ */
+function changePageSize() {
+    pageSize = parseInt(document.getElementById('pageSize').value);
+    currentPage = 1;
+    renderResults();
+}
+
+/**
+ * Close thesis details and show results again
+ */
+function closeThesisDetails() {
+    thesisDetails.classList.add('hidden');
+    if (!searchResults.classList.contains('hidden')) {
+        searchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+/**
+ * Clear advanced search form
+ */
+function clearAdvancedSearch() {
+    advancedSearchForm.reset();
+    hideError();
+    searchResults.classList.add('hidden');
+    thesisDetails.classList.add('hidden');
+    allResults = [];
+    totalFound = 0;
+    currentPage = 1;
 }
 
 /**
@@ -129,7 +405,6 @@ function displayThesisDetails(thesis) {
     fields.forEach(field => {
         if (field.value) {
             if (field.isAbstract) {
-                // Abstract in its own section
                 html += `
                     <div class="border-t pt-6">
                         <h4 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
@@ -142,7 +417,6 @@ function displayThesisDetails(thesis) {
                     </div>
                 `;
             } else if (field.highlight) {
-                // Highlighted title
                 html += `
                     <div class="bg-purple-50 rounded-lg p-6 border-l-4 border-purple-600">
                         <div class="flex items-start">
@@ -155,8 +429,7 @@ function displayThesisDetails(thesis) {
                     </div>
                 `;
             } else if (field.keywords) {
-                // Keywords as tags
-                const keywords = field.value.split(',').map(k => k.trim()).filter(k => k);
+                const keywords = field.value.split(';').map(k => k.trim()).filter(k => k);
                 html += `
                     <div class="flex items-start">
                         <div class="detail-label flex items-center">
@@ -173,7 +446,6 @@ function displayThesisDetails(thesis) {
                     </div>
                 `;
             } else {
-                // Regular field
                 html += `
                     <div class="flex items-start">
                         <div class="detail-label flex items-center">
@@ -189,7 +461,6 @@ function displayThesisDetails(thesis) {
 
     html += '</div>';
 
-    // Add action buttons
     html += `
         <div class="mt-8 pt-6 border-t flex flex-wrap gap-4">
             <a href="https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${thesis.thesis_id}"
@@ -210,32 +481,18 @@ function displayThesisDetails(thesis) {
     thesisDetails.classList.remove('hidden');
 }
 
-/**
- * Print thesis details
- */
-function printThesis() {
-    window.print();
-}
+function printThesis() { window.print(); }
 
-/**
- * Show error message
- */
 function showError(message) {
-    errorText.innerHTML = message;  // Changed to innerHTML to support HTML
+    errorText.innerHTML = message;
     errorMessage.classList.remove('hidden');
     errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-/**
- * Hide error message
- */
 function hideError() {
     errorMessage.classList.add('hidden');
 }
 
-/**
- * Escape HTML to prevent XSS
- */
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -243,25 +500,12 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-/**
- * Show notification
- */
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg z-50 ${
-        type === 'success' ? 'bg-green-500' :
-        type === 'error' ? 'bg-red-500' :
-        'bg-blue-500'
-    } text-white font-semibold`;
-    notification.textContent = message;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-        notification.remove();
-    }, 3000);
-}
-
 // Global functions for onclick handlers
 window.quickLoadThesis = quickLoadThesis;
 window.printThesis = printThesis;
+window.switchTab = switchTab;
+window.clearAdvancedSearch = clearAdvancedSearch;
+window.closeThesisDetails = closeThesisDetails;
+window.loadThesisDetails = loadThesisDetails;
+window.goToPage = goToPage;
+window.changePageSize = changePageSize;

@@ -307,6 +307,72 @@ async def get_thesis_details(thesis_id: str):
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
+class AdvancedSearchRequest(BaseModel):
+    """Request model for advanced thesis search."""
+    keyword1: Optional[str] = ""
+    searchField1: Optional[str] = "Tumu"
+    searchType1: Optional[str] = "0"
+    operator2: Optional[str] = "ve"
+    keyword2: Optional[str] = ""
+    searchField2: Optional[str] = "Tumu"
+    searchType2: Optional[str] = "0"
+    operator3: Optional[str] = "ve"
+    keyword3: Optional[str] = ""
+    searchField3: Optional[str] = "Tumu"
+    searchType3: Optional[str] = "0"
+    yearFrom: Optional[str] = ""
+    yearTo: Optional[str] = ""
+    thesisType: Optional[str] = ""
+    permissionStatus: Optional[str] = ""
+    groupType: Optional[str] = ""
+    language: Optional[str] = ""
+    status: Optional[str] = ""
+    university: Optional[str] = ""
+    institute: Optional[str] = ""
+
+
+class AdvancedSearchResult(BaseModel):
+    """Single result from advanced search."""
+    thesis_id: Optional[str]
+    author: Optional[str]
+    year: Optional[str]
+    title: Optional[str]
+    title_tr: Optional[str]
+    thesis_type: Optional[str]
+    subject: Optional[str]
+
+
+class AdvancedSearchResponse(BaseModel):
+    """Response model for advanced search."""
+    results: List[AdvancedSearchResult]
+    total: int
+    total_found: int = 0
+
+
+@app.post("/api/advanced-search", response_model=AdvancedSearchResponse)
+async def advanced_search(request: AdvancedSearchRequest):
+    """
+    Advanced search using YÖK's Gelişmiş Tarama form.
+    """
+    if not scraper:
+        raise HTTPException(status_code=503, detail="Scraper not initialized")
+
+    try:
+        logger.info(f"Advanced search: keyword1={request.keyword1}")
+        data = await scraper.advanced_search(request.dict())
+        results = data.get("results", [])
+        total_found = data.get("total_found", len(results))
+        logger.info(f"Advanced search returned {len(results)} results (total found: {total_found})")
+        return AdvancedSearchResponse(results=results, total=len(results), total_found=total_found)
+
+    except YOKThesisScraperError as e:
+        logger.error(f"Scraper error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"YÖK service error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
 @app.get("/api/recent", response_model=List[ThesisResponse])
 async def get_recent_theses(
     days: int = Query(15, ge=1, le=90, description="Number of days to look back"),
