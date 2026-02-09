@@ -1,4 +1,9 @@
-# YÖK Ulusal Tez Merkezi MCP Sunucusu
+# YÖK Tez Araması - MCP Sunucusu & Web Arayüzü
+
+[![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://modelcontextprotocol.io)
+[![Python](https://img.shields.io/badge/Python-3.10+-green)](https://www.python.org/)
+[![Smithery](https://img.shields.io/badge/Smithery-Ready-orange)](https://smithery.ai)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [English](#english) | [Türkçe](#türkçe)
 
@@ -8,22 +13,27 @@
 
 YÖK Ulusal Tez Merkezi için Model Context Protocol (MCP) sunucusu. Claude Desktop ve diğer MCP uyumlu AI asistanlarıyla YÖK Tez Merkezi'nde tez arama ve bilgi alma işlemlerini kolaylaştırır.
 
-**🌟 YENİ: Web Arayüzü!** Modern, responsive web arayüzü ile doğrudan tarayıcıdan tez arama yapabilirsiniz. [Web Arayüzü Dokümantasyonu](WEB_README.md)
+**🌟 YENİ: Smithery Desteği!** Artık Smithery platformuna deploy edilebilir MCP sunucusu. [MCP Dokümantasyonu](MCP_README.md)
 
-### 🎯 İki Kullanım Şekli
+**🌟 Web Arayüzü!** Modern, responsive web arayüzü ile doğrudan tarayıcıdan tez arama yapabilirsiniz. [Web Arayüzü Dokümantasyonu](WEB_README.md)
 
-1. **MCP Sunucusu**: Claude Desktop ile entegre kullanım
-2. **Web Arayüzü**: Tarayıcıdan modern arayüz ile kullanım
+### 🎯 Üç Kullanım Şekli
+
+1. **MCP Sunucusu (Smithery)**: Smithery platformunda deploy edilmiş kullanım
+2. **MCP Sunucusu (Lokal)**: Claude Desktop ile lokal entegre kullanım
+3. **Web Arayüzü**: Tarayıcıdan modern arayüz ile kullanım
 
 ### 📋 Özellikler
 
 - **🔍 Gelişmiş Tez Arama**: Başlık, yazar, danışman, konu bazlı arama
-- **📚 Detaylı Tez Bilgileri**: Özet, anahtar kelimeler, danışman bilgileri
-- **🆕 Son Eklenen Tezler**: Güncel tez takibi
+- **📚 Detaylı Tez Bilgileri**: Özet, amaç, anahtar kelimeler, danışman bilgileri
+- **🔎 Gelişmiş Tarama**: Çoklu kriter ve boolean operatörlerle (AND/OR/NOT) gelişmiş arama
+- **🆕 Son Eklenen Tezler**: Güncel tez takibi (son N gün)
 - **📊 İstatistiksel Analiz**: Üniversite, yıl, tez türü bazlı istatistikler
-- **⚡ Hızlı ve Güvenli**: Rate limiting, caching, retry logic
+- **⚡ Hızlı ve Güvenli**: Selenium ile bot koruması bypass, rate limiting, caching
 - **🇹🇷 Türkçe Karakter Desteği**: Tam UTF-8 desteği
 - **🌐 Web Arayüzü**: Modern, responsive frontend (YENİ!)
+- **🚀 Smithery Desteği**: Tek tıkla cloud deployment (YENİ!)
 
 ---
 
@@ -56,7 +66,36 @@ pip install -r requirements.txt
 
 ---
 
-## 🤖 MCP Sunucusu Kullanımı
+## 🚀 Smithery ile Hızlı Başlangıç (MCP)
+
+Smithery platformunda tek tıkla MCP sunucunuzu deploy edin!
+
+### Smithery Deployment
+
+```bash
+# 1. Smithery CLI'yi yükleyin
+npm install -g @smithery/cli
+
+# 2. Projeyi deploy edin
+smithery deploy
+
+# 3. Claude Desktop'ta kullanın
+# Smithery otomatik olarak claude_desktop_config.json'u güncelleyecektir
+```
+
+**Daha fazla bilgi için:** [MCP_README.md](MCP_README.md) - Detaylı MCP kullanım kılavuzu
+
+### Avantajlar
+
+- ✅ Tek komutla deployment
+- ✅ Otomatik Claude Desktop entegrasyonu
+- ✅ Cloud-based çalışma (lokal kurulum gerektirmez)
+- ✅ Otomatik güncellemeler
+- ✅ Merkezi yönetim
+
+---
+
+## 🤖 Lokal MCP Sunucusu Kullanımı
 
 ### 🛠️ Kurulum
 
@@ -87,10 +126,12 @@ pip install -e ".[dev]"
 #### Adım 3: Sunucuyu Test Edin
 
 ```bash
-python -m src.server
+python server.py
 ```
 
 Sunucu başarıyla başlarsa, stdin/stdout üzerinden MCP protokolü ile iletişime hazırdır.
+
+**Not:** Smithery deployment için `server.py` kullanılır. Eski `src.server` modülü hala çalışır ancak yeni özellikleri desteklemez.
 
 ### 🔌 Claude Desktop ile Entegrasyon
 
@@ -106,10 +147,8 @@ Claude Desktop'ın MCP sunucularını kullanabilmesi için yapılandırma dosyas
     "yok-tez": {
       "command": "python",
       "args": [
-        "-m",
-        "src.server"
+        "/tam/yol/yok-tez-mcp/server.py"
       ],
-      "cwd": "/tam/yol/yok-tez-mcp",
       "env": {}
     }
   }
@@ -126,10 +165,8 @@ Claude Desktop'ın MCP sunucularını kullanabilmesi için yapılandırma dosyas
     "yok-tez": {
       "command": "python",
       "args": [
-        "-m",
-        "src.server"
+        "C:\\tam\\yol\\yok-tez-mcp\\server.py"
       ],
-      "cwd": "C:\\tam\\yol\\yok-tez-mcp",
       "env": {}
     }
   }
@@ -193,9 +230,9 @@ Boğaziçi Üniversitesi'nde 2022 yılında yapılan tezlerin istatistiklerini �
 
 MCP sunucusu aşağıdaki araçları sağlar:
 
-#### 1. `search_thesis`
+#### 1. `search_theses`
 
-Tez arama işlemi gerçekleştirir.
+Tez arama işlemi gerçekleştirir (çoğul form - birden fazla tez döndürür).
 
 **Parametreler:**
 
@@ -263,45 +300,39 @@ Bu tez çalışmasında, derin öğrenme yöntemlerinin görüntü sınıflandı
 problemlerindeki etkinliği araştırılmıştır...
 ```
 
-#### 3. `get_recent_thesis`
+#### 3. `advanced_search`
+
+Gelişmiş çoklu kriter araması yapar. 3 anahtar kelimeye kadar ve boolean operatörler (AND/OR/NOT) destekler.
+
+**Parametreler:**
+
+- `keyword1` (opsiyonel): İlk arama terimi
+- `searchField1` (opsiyonel): İlk arama alanı (1=Başlık, 2=Yazar, 3=Danışman, 4=Konu, 5=İndeks, 6=Özet, 7=Tümü)
+- `searchType1` (opsiyonel): Arama tipi (1=Tam eşleşme, 2=İçerir)
+- `operator2` (opsiyonel): İkinci terim operatörü ("and", "or", "not")
+- `keyword2`, `searchField2`, `searchType2`: İkinci terim için aynı parametreler
+- `operator3` (opsiyonel): Üçüncü terim operatörü
+- `keyword3`, `searchField3`, `searchType3`: Üçüncü terim için aynı parametreler
+- `yearFrom`, `yearTo`: Yıl aralığı
+- `thesisType`: Tez türü
+- `language`: Dil
+- `university`: Üniversite
+
+**Örnek Kullanım:**
+
+```
+"machine learning" başlıkta VE "healthcare" özetle içeren tezleri bul
+→ keyword1="machine learning", searchField1="1", operator2="and", keyword2="healthcare", searchField2="6"
+```
+
+#### 4. `get_recent_theses`
 
 Son eklenen tezleri listeler.
 
 **Parametreler:**
 
-- `days` (opsiyonel): Kaç günlük tezler (varsayılan: 15)
-- `limit` (opsiyonel): Maksimum sonuç sayısı (varsayılan: 50)
-
-#### 4. `get_thesis_statistics`
-
-Belirli kriterlere göre tez istatistikleri hesaplar.
-
-**Parametreler:**
-
-- `university` (opsiyonel): Üniversite filtresi
-- `year` (opsiyonel): Yıl filtresi
-- `thesis_type` (opsiyonel): Tez türü filtresi
-
-**Örnek Çıktı:**
-
-```
-Thesis Statistics
-================================================================================
-
-Filters Applied:
-  - University: İstanbul Üniversitesi
-  - Year: 2023
-
-Total Theses: 250
-
-By Thesis Type:
-  - Yüksek Lisans: 180
-  - Doktora: 70
-
-By Language:
-  - Türkçe: 200
-  - İngilizce: 50
-```
+- `days` (opsiyonel): Kaç günlük tezler (varsayılan: 15, maksimum: 90)
+- `limit` (opsiyonel): Maksimum sonuç sayısı (varsayılan: 50, maksimum: 200)
 
 ### 🧪 Test Etme
 
@@ -416,21 +447,48 @@ Sorularınız için GitHub Issues kullanın.
 
 MCP Server for YÖK National Thesis Center. Enables thesis search and information retrieval from Turkish Higher Education Council's database through Claude Desktop and other MCP-compatible AI assistants.
 
+**🌟 NEW: Smithery Support!** Now deployable to Smithery platform. [MCP Documentation](MCP_README.md)
+
+**🌟 Web Interface!** Modern, responsive web UI for browser-based searching. [Web UI Documentation](WEB_README.md)
+
 ### 📋 Features
 
 - **🔍 Advanced Thesis Search**: Search by title, author, advisor, subject
-- **📚 Detailed Thesis Information**: Abstracts, keywords, advisor details
-- **🆕 Recent Additions**: Track newly added theses
+- **📚 Detailed Thesis Information**: Abstracts, purpose, keywords, advisor details
+- **🔎 Advanced Search**: Multi-criteria search with boolean operators (AND/OR/NOT)
+- **🆕 Recent Additions**: Track newly added theses (last N days)
 - **📊 Statistical Analysis**: Statistics by university, year, thesis type
-- **⚡ Fast and Secure**: Rate limiting, caching, retry logic
+- **⚡ Fast and Secure**: Selenium-based bot protection bypass, rate limiting, caching
 - **🇹🇷 Turkish Character Support**: Full UTF-8 support
+- **🌐 Web Interface**: Modern, responsive frontend (NEW!)
+- **🚀 Smithery Support**: One-click cloud deployment (NEW!)
 
-### 🛠️ Installation
+## 🚀 Quick Start with Smithery (MCP)
+
+Deploy your MCP server to Smithery platform with one click!
+
+### Smithery Deployment
+
+```bash
+# 1. Install Smithery CLI
+npm install -g @smithery/cli
+
+# 2. Deploy the project
+smithery deploy
+
+# 3. Use in Claude Desktop
+# Smithery will automatically update your claude_desktop_config.json
+```
+
+**For more information:** [MCP_README.md](MCP_README.md) - Detailed MCP usage guide
+
+### 🛠️ Local Installation
 
 #### Requirements
 
 - Python 3.10 or higher
 - pip (Python package manager)
+- Chrome/Chromium (for Selenium)
 
 #### Step 1: Clone the Repository
 
@@ -454,10 +512,12 @@ pip install -e ".[dev]"
 #### Step 3: Test the Server
 
 ```bash
-python -m src.server
+python server.py
 ```
 
 If successful, the server is ready to communicate via MCP protocol over stdin/stdout.
+
+**Note:** For Smithery deployment, use `server.py`. The old `src.server` module still works but doesn't support new features.
 
 ### 🔌 Integration with Claude Desktop
 
@@ -473,10 +533,8 @@ Create or edit `~/.config/claude/claude_desktop_config.json`:
     "yok-tez": {
       "command": "python",
       "args": [
-        "-m",
-        "src.server"
+        "/full/path/to/yok-tez-mcp/server.py"
       ],
-      "cwd": "/full/path/to/yok-tez-mcp",
       "env": {}
     }
   }
@@ -493,10 +551,8 @@ Edit `%APPDATA%\Claude\claude_desktop_config.json`:
     "yok-tez": {
       "command": "python",
       "args": [
-        "-m",
-        "src.server"
+        "C:\\full\\path\\to\\yok-tez-mcp\\server.py"
       ],
-      "cwd": "C:\\full\\path\\to\\yok-tez-mcp",
       "env": {}
     }
   }
@@ -559,9 +615,9 @@ Get statistics for theses from Boğaziçi University in 2022.
 
 The MCP server provides the following tools:
 
-#### 1. `search_thesis`
+#### 1. `search_theses`
 
-Search for theses in the YÖK database.
+Search for theses in the YÖK database (plural form - returns multiple theses).
 
 **Parameters:**
 
@@ -571,36 +627,52 @@ Search for theses in the YÖK database.
 - `year_end` (optional): End year
 - `thesis_type` (optional): Thesis type (`yuksek_lisans`, `doktora`, `tipta_uzmanlik`, `sanatta_yeterlik`)
 - `university` (optional): University name
-- `language` (optional): Thesis language (`tr`, `en`, etc.)
-- `permission_status` (optional): Permission status (`izinli`, `izinsiz`)
-- `max_results` (optional): Maximum results (default: 20)
+- `language` (optional): Thesis language (Türkçe, İngilizce, etc.)
+- `max_results` (optional): Maximum results (default: 20, max: 100)
 
 #### 2. `get_thesis_details`
 
-Get detailed information about a specific thesis.
+Get detailed information about a specific thesis including abstract and purpose.
 
 **Parameters:**
 
 - `thesis_id` (required): Thesis ID number
 
-#### 3. `get_recent_thesis`
+**Returns:** Title, author, advisor, abstract, purpose, keywords, and more.
+
+#### 3. `advanced_search`
+
+Advanced multi-criteria search. Supports up to 3 keywords with boolean operators (AND/OR/NOT).
+
+**Parameters:**
+
+- `keyword1` (optional): First search term
+- `searchField1` (optional): First search field (1=Title, 2=Author, 3=Advisor, 4=Subject, 5=Index, 6=Abstract, 7=All)
+- `searchType1` (optional): Search type (1=Exact match, 2=Contains)
+- `operator2` (optional): Second term operator ("and", "or", "not")
+- `keyword2`, `searchField2`, `searchType2`: Same parameters for second term
+- `operator3` (optional): Third term operator
+- `keyword3`, `searchField3`, `searchType3`: Same parameters for third term
+- `yearFrom`, `yearTo`: Year range
+- `thesisType`: Thesis type
+- `language`: Language
+- `university`: University
+
+**Example:**
+
+```
+Find theses with "machine learning" in title AND "healthcare" in abstract
+→ keyword1="machine learning", searchField1="1", operator2="and", keyword2="healthcare", searchField2="6"
+```
+
+#### 4. `get_recent_theses`
 
 List recently added theses.
 
 **Parameters:**
 
-- `days` (optional): Number of days to look back (default: 15)
-- `limit` (optional): Maximum results (default: 50)
-
-#### 4. `get_thesis_statistics`
-
-Calculate thesis statistics based on filters.
-
-**Parameters:**
-
-- `university` (optional): University filter
-- `year` (optional): Year filter
-- `thesis_type` (optional): Thesis type filter
+- `days` (optional): Number of days to look back (default: 15, max: 90)
+- `limit` (optional): Maximum results (default: 50, max: 200)
 
 ### 🧪 Testing
 

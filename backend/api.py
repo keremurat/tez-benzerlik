@@ -124,6 +124,7 @@ class ThesisDetailResponse(BaseModel):
     page_count: Optional[str]
     keywords: Optional[str]
     abstract: Optional[str]
+    purpose: Optional[str]
 
 
 class StatisticsResponse(BaseModel):
@@ -289,7 +290,8 @@ async def get_thesis_details(thesis_id: str):
             details['thesis_id'] = thesis_id
             return details
 
-        details = await scraper.get_thesis_details(thesis_id)
+        # IMPORTANT: Disable cache to always get fresh data
+        details = await scraper.get_thesis_details(thesis_id, use_cache=False)
 
         if not details:
             raise HTTPException(status_code=404, detail=f"Thesis {thesis_id} not found")

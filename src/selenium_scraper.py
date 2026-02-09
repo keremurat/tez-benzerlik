@@ -498,45 +498,45 @@ class SeleniumYOKScraper:
             "language": None,
             "page_count": None,
             "keywords": None,
-            "abstract": None
+            "abstract": None,
+            "purpose": None
         }
 
     def _get_thesis_details_sync(self, thesis_id: str) -> Dict[str, Any]:
         """
-        Synchronous thesis detail retrieval using modal approach.
+        Synchronous thesis detail retrieval using search + modal approach.
 
-        YÖK workflow:
-        1. Search with a broad query to find results
-        2. Find the thesis ID in results
-        3. Click on it to open modal dialog
-        4. Parse modal content
+        YÖK's direct detail page URLs return errors, so we:
+        1. Search for the thesis by ID
+        2. Click the thesis to open modal
+        3. Parse modal content for basic info
+        4. Extract abstract from modal's HTML
         """
         driver = self._get_driver()
 
         try:
-            logger.info(f"Searching for thesis ID: {thesis_id} using TezNo field")
+            logger.info(f"Fetching thesis {thesis_id} via search + modal")
 
             # Navigate to search page
             driver.get(self.SEARCH_URL)
-            time.sleep(2)
+            time.sleep(3)
 
             wait = WebDriverWait(driver, 15)
 
-            # Click detailed search tab (tabs-1) which has TezNo field
+            # Click detailed search tab
             detailed_tab = wait.until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "a[href='#tabs-1']"))
             )
             detailed_tab.click()
-            logger.info("✓ Clicked detailed search tab")
+            logger.info("✓ Opened detailed search")
             time.sleep(1)
 
-            # Enter thesis ID in the TezNo field
+            # Enter thesis ID
             try:
                 tez_no_input = driver.find_element(By.NAME, "TezNo")
                 tez_no_input.clear()
                 tez_no_input.send_keys(thesis_id)
-                logger.info(f"✓ Entered thesis ID {thesis_id} in TezNo field")
-                time.sleep(0.5)
+                logger.info(f"✓ Entered thesis ID: {thesis_id}")
             except:
                 logger.warning("TezNo field not found")
                 return self._create_complete_thesis_response(thesis_id)
@@ -545,46 +545,66 @@ class SeleniumYOKScraper:
             tabs1_div = driver.find_element(By.ID, "tabs-1")
             submit_button = tabs1_div.find_element(By.CSS_SELECTOR, "input[type='submit']")
             submit_button.click()
-            logger.info("✓ Submitted thesis ID search")
-
-            # Wait for results
+            logger.info("✓ Submitted search")
             time.sleep(5)
 
             # Find thesis in results
             try:
                 thesis_span = wait.until(
-                    EC.presence_of_element_located((By.XPATH, f"//span[@onclick and contains(text(), '{thesis_id}')]"))
+                    EC.presence_of_element_located(
+                        (By.XPATH, f"//span[@onclick and contains(text(), '{thesis_id}')]")
+                    )
                 )
-                logger.info(f"✓ Found thesis {thesis_id} in search results")
+                logger.info(f"✓ Found thesis {thesis_id} in results")
             except TimeoutException:
                 logger.warning(f"Thesis {thesis_id} not found in search results")
                 return self._create_complete_thesis_response(thesis_id)
 
-            # Step 3: Click to open modal
-            logger.info("Clicking thesis to open modal")
+            # Click to open modal
+            logger.info("Opening modal...")
             driver.execute_script("arguments[0].click();", thesis_span)
-            time.sleep(3)
+            time.sleep(4)
 
-            # Step 4: Wait for modal and parse content
+            # Wait for modal
             try:
                 modal = wait.until(
                     EC.presence_of_element_located((By.ID, "dialog-modal"))
                 )
-                logger.info("Modal dialog appeared")
+                logger.info("✓ Modal opened")
 
+                # Scroll within modal to load all content
+                driver.execute_script("""
+                    var modal = document.getElementById('dialog-modal');
+                    if (modal) {
+                        modal.scrollTop = modal.scrollHeight;
+                    }
+                """)
+                time.sleep(2)
+
+                # Get modal HTML
                 modal_html = modal.get_attribute('innerHTML')
-                details = self._parse_modal_content(modal_html, thesis_id)
 
-                logger.info(f"Successfully retrieved details for thesis {thesis_id}")
+                # Parse modal content
+                details = self._parse_modal_content_enhanced(modal_html, thesis_id)
+
+                if details.get('abstract'):
+                    logger.info(f"✓ Found abstract: {len(details['abstract'])} chars")
+                else:
+                    logger.warning(f"⚠ Abstract not found")
+
+                if details.get('purpose'):
+                    logger.info(f"✓ Found purpose: {len(details['purpose'])} chars")
+                else:
+                    logger.warning(f"⚠ Purpose not found")
+
                 return details
 
             except TimeoutException:
-                logger.warning("Modal dialog did not appear")
+                logger.warning("Modal did not appear")
                 return self._create_complete_thesis_response(thesis_id)
 
         except Exception as e:
-            logger.error(f"Error fetching thesis details: {str(e)}", exc_info=True)
-            # Return complete minimal data instead of failing
+            logger.error(f"Error fetching thesis: {str(e)}", exc_info=True)
             return self._create_complete_thesis_response(
                 thesis_id=thesis_id,
                 title=f"Tez #{thesis_id}",
@@ -592,8 +612,13 @@ class SeleniumYOKScraper:
             )
 
     def _parse_modal_content(self, html: str, thesis_id: str) -> Dict[str, Any]:
-        """Parse thesis details from modal dialog content."""
+        """Parse thesis details from modal dialog content (legacy method)."""
+        return self._parse_modal_content_enhanced(html, thesis_id)
+
+    def _parse_modal_content_enhanced(self, html: str, thesis_id: str) -> Dict[str, Any]:
+        """Enhanced modal content parser with improved abstract/purpose extraction."""
         soup = BeautifulSoup(html, 'lxml')
+        import re
 
         # Start with complete response
         details = {
@@ -609,14 +634,15 @@ class SeleniumYOKScraper:
             "language": None,
             "page_count": None,
             "keywords": None,
-            "abstract": None
+            "abstract": None,
+            "purpose": None
         }
 
         try:
-            # Find the main content cell (3rd td in row)
+            # === PARSE BASIC INFO ===
+            # Find main content cell
             content_td = soup.find('td', valign='top', string=lambda t: 'Yazar' in str(t) if t else False)
             if not content_td:
-                # Try finding by structure
                 rows = soup.find_all('tr', class_='renkp')
                 if rows:
                     cells = rows[0].find_all('td')
@@ -625,21 +651,19 @@ class SeleniumYOKScraper:
 
             if content_td:
                 text = content_td.get_text()
-
-                # Extract title (first line)
                 lines = [l.strip() for l in text.split('\n') if l.strip()]
-                if lines:
-                    details['title'] = lines[0].split(' / ')[0].strip()  # English title
 
-                # Extract author
+                if lines:
+                    # Title is often the first line
+                    details['title'] = lines[0].split(' / ')[0].strip()
+
+                # Extract fields
                 for line in lines:
                     if 'Yazar:' in line:
                         details['author'] = line.replace('Yazar:', '').strip()
                     elif 'Danışman:' in line or 'Danışman :' in line:
-                        advisor = line.replace('Danışman:', '').replace('Danışman :', '').strip()
-                        details['advisor'] = advisor
+                        details['advisor'] = line.replace('Danışman:', '').replace('Danışman :', '').strip()
                     elif 'Yer Bilgisi:' in line:
-                        # Parse university/institute/department
                         parts = line.replace('Yer Bilgisi:', '').split('/')
                         if len(parts) >= 1:
                             details['university'] = parts[0].strip()
@@ -650,7 +674,7 @@ class SeleniumYOKScraper:
                     elif 'Dizin:' in line:
                         details['keywords'] = line.replace('Dizin:', '').strip()
 
-            # Find status cell (4th td)
+            # Status cell
             status_cells = soup.find_all('td', valign='top')
             if len(status_cells) >= 4:
                 status_td = status_cells[3]
@@ -658,22 +682,144 @@ class SeleniumYOKScraper:
                 status_lines = [l.strip() for l in status_text.split('\n') if l.strip()]
 
                 for line in status_lines:
-                    if 'Doktora' in line or 'Yüksek Lisans' in line or 'Tıpta Uzmanlık' in line:
+                    if any(t in line for t in ['Doktora', 'Yüksek Lisans', 'Tıpta Uzmanlık', 'Sanatta Yeterlik']):
                         details['thesis_type'] = line.strip()
-                    elif 'İngilizce' in line or 'Türkçe' in line:
+                    elif any(lang in line for lang in ['İngilizce', 'Türkçe', 'English', 'Turkish']):
                         details['language'] = line.strip()
-                    elif line.isdigit() and len(line) == 4:  # Year
+                    elif line.isdigit() and len(line) == 4:
                         details['year'] = line
-                    elif 's.' in line:  # Page count
+                    elif 's.' in line:
                         details['page_count'] = line.strip()
 
+            # === ENHANCED ABSTRACT & PURPOSE EXTRACTION ===
+            abstract_text = None
+            purpose_text = None
+            all_text = soup.get_text()
+
+            # Method 1: Find td with id="td0" - YÖK's structured abstract format
+            # This td contains: Amaç, Gereç ve Yöntem, Bulgular, Sonuç, Anahtar Kelimeler
+            td0 = soup.find('td', {'id': 'td0'})
+            if td0:
+                td0_text = td0.get_text().strip()
+                logger.info(f"✓ Found td0 with {len(td0_text)} chars")
+
+                # Extract Amaç (Purpose)
+                amac_match = re.search(r'Amaç:\s*(.+?)(?=\n\s*(?:Gereç|Yöntem|Method|Material|Bulgular|$))',
+                                      td0_text, re.IGNORECASE | re.DOTALL)
+                if amac_match:
+                    purpose_text = normalize_turkish_text(amac_match.group(1).strip())
+                    logger.info(f"✓ Found purpose in td0: {len(purpose_text)} chars")
+
+                # Extract full structured abstract as "abstract"
+                # Take everything from Amaç to Anahtar Kelimeler
+                abstract_match = re.search(r'(Amaç:.+?)(?=Anahtar Kelimeler|$)',
+                                          td0_text, re.IGNORECASE | re.DOTALL)
+                if abstract_match:
+                    abstract_text = normalize_turkish_text(abstract_match.group(1).strip())
+                    logger.info(f"✓ Found structured abstract in td0: {len(abstract_text)} chars")
+
+            # Method 2: Find divs with abstract classes
+            if not abstract_text:
+                for selector in [{'class': 'ozet'}, {'class': 'abstract'}, {'id': 'ozet'}]:
+                    elem = soup.find(['div', 'p', 'span'], selector)
+                    if elem:
+                        text = elem.get_text().strip()
+                        if len(text) > 100:
+                            abstract_text = normalize_turkish_text(text)
+                            logger.info(f"✓ Found abstract using {selector}")
+                            break
+
+            # Method 3: Find by looking for "Özet:" or "Abstract:" labels in table rows
+            if not abstract_text:
+                all_rows = soup.find_all('tr')
+                for row in all_rows:
+                    cells = row.find_all(['td', 'th'])
+                    if len(cells) >= 2:
+                        label = cells[0].get_text().strip()
+                        if any(word in label.lower() for word in ['özet', 'abstract']):
+                            text = cells[1].get_text().strip()
+                            if len(text) > 100:
+                                abstract_text = normalize_turkish_text(text)
+                                logger.info("✓ Found abstract in table row")
+                                break
+
+            # Method 4: Regex search for abstract patterns
+            if not abstract_text:
+                patterns = [
+                    r'(?:Türkçe\s+)?Özet\s*:?\s*\n?\s*(.+?)(?=\n\s*(?:İngilizce|Abstract|Amaç|Yöntem|Giriş|$))',
+                    r'(?:Turkish\s+)?Abstract\s*:?\s*\n?\s*(.+?)(?=\n\s*(?:English|Özet|Purpose|Method|$))',
+                    r'Özet\s*:\s*(.{100,}?)(?=\n\s*\n)',
+                    r'Abstract\s*:\s*(.{100,}?)(?=\n\s*\n)'
+                ]
+
+                for pattern in patterns:
+                    match = re.search(pattern, all_text, re.IGNORECASE | re.DOTALL)
+                    if match:
+                        text = match.group(1).strip()
+                        text = re.sub(r'\s+', ' ', text)
+                        if len(text) > 100:
+                            abstract_text = normalize_turkish_text(text)
+                            logger.info("✓ Found abstract via regex")
+                            break
+
+            # Method 5: Find paragraphs/divs containing substantial academic text
+            if not abstract_text:
+                for elem in soup.find_all(['p', 'div', 'td']):
+                    elem_text = elem.get_text().strip()
+                    if len(elem_text) > 200 and elem_text.count(' ') > 30:
+                        indicators = ['amaç', 'yöntem', 'sonuç', 'çalışma', 'bulgular',
+                                     'purpose', 'method', 'results', 'study', 'findings']
+                        if any(ind in elem_text.lower() for ind in indicators):
+                            abstract_text = normalize_turkish_text(elem_text)
+                            logger.info("✓ Found abstract by content analysis")
+                            break
+
+            if abstract_text:
+                details['abstract'] = abstract_text
+
+            # === PURPOSE EXTRACTION (if not found in td0) ===
+            if not purpose_text:
+                # Method 1: Find in table rows with "Amaç" label
+                all_rows = soup.find_all('tr')
+                for row in all_rows:
+                    cells = row.find_all(['td', 'th'])
+                    if len(cells) >= 2:
+                        label = cells[0].get_text().strip().lower()
+                        if any(word in label for word in ['amaç', 'purpose', 'objective']):
+                            text = cells[1].get_text().strip()
+                            if len(text) > 30:
+                                purpose_text = normalize_turkish_text(text)
+                                logger.info("✓ Found purpose in table")
+                                break
+
+            # Method 2: Regex search for purpose
+            if not purpose_text:
+                patterns = [
+                    r'(?:Çalışmanın\s+)?Amaç[ıi]?\s*:\s*(.+?)(?=\n\s*(?:Yöntem|Gereç|Method|Material|Bulgular|$))',
+                    r'Purpose\s*:\s*(.+?)(?=\n\s*(?:Method|Material|$))',
+                    r'Aim\s*:\s*(.+?)(?=\n\s*(?:Method|Material|$))'
+                ]
+
+                for pattern in patterns:
+                    match = re.search(pattern, all_text, re.IGNORECASE | re.DOTALL)
+                    if match:
+                        text = match.group(1).strip()
+                        text = re.sub(r'\s+', ' ', text)[:500]
+                        if len(text) > 30:
+                            purpose_text = normalize_turkish_text(text)
+                            logger.info("✓ Found purpose via regex")
+                            break
+
+            if purpose_text:
+                details['purpose'] = purpose_text
+
         except Exception as e:
-            logger.error(f"Error parsing modal content: {str(e)}")
+            logger.error(f"Error parsing modal: {str(e)}", exc_info=True)
 
         return details
 
     def _parse_thesis_detail(self, html: str, thesis_id: str) -> Dict[str, Any]:
-        """Parse detailed thesis information."""
+        """Parse detailed thesis information with improved abstract/purpose extraction."""
         soup = BeautifulSoup(html, 'lxml')
 
         # Start with complete response structure
@@ -690,51 +836,214 @@ class SeleniumYOKScraper:
             "language": None,
             "page_count": None,
             "keywords": None,
-            "abstract": None
+            "abstract": None,
+            "purpose": None
         }
 
-        detail_table = soup.find('table', {'class': 'bilgi'}) or soup.find('div', {'class': 'thesis-detail'})
+        # Try multiple selectors for the detail table
+        detail_table = (
+            soup.find('table', {'class': 'bilgi'}) or
+            soup.find('div', {'class': 'thesis-detail'}) or
+            soup.find('table', class_=lambda x: x and 'tablo' in x) or
+            soup.find('div', {'id': 'iceriktablo'})
+        )
 
-        if not detail_table:
-            logger.warning("No detail table found")
-            return details
+        if detail_table:
+            rows = detail_table.find_all('tr')
+            for row in rows:
+                try:
+                    cells = row.find_all(['td', 'th'])
+                    if len(cells) >= 2:
+                        key = normalize_turkish_text(cells[0].get_text()).rstrip(':')
+                        value = normalize_turkish_text(cells[1].get_text())
 
-        rows = detail_table.find_all('tr')
-        for row in rows:
-            try:
+                        key_mapping = {
+                            'Tez No': 'thesis_id',
+                            'Tez Adı': 'title',
+                            'Yazar': 'author',
+                            'Danışman': 'advisor',
+                            'Eş Danışman': 'co_advisor',
+                            'Yıl': 'year',
+                            'Üniversite': 'university',
+                            'Enstitü': 'institute',
+                            'Anabilim Dalı': 'department',
+                            'Tez Türü': 'thesis_type',
+                            'Dil': 'language',
+                            'Sayfa Sayısı': 'page_count',
+                            'Anahtar Kelimeler': 'keywords',
+                        }
+
+                        english_key = key_mapping.get(key, key.lower().replace(' ', '_'))
+                        if english_key in details:  # Only update if it's a known field
+                            details[english_key] = value
+
+                except Exception as e:
+                    logger.warning(f"Failed to parse detail row: {str(e)}")
+                    continue
+
+        # === ENHANCED ABSTRACT EXTRACTION ===
+        abstract_text = None
+        import re
+
+        # Method 1: Find all elements containing "Özet" or "Abstract" in their text
+        logger.info("Searching for abstract using multiple methods...")
+
+        # Look for specific div/section patterns
+        for selector in [
+            {'class': 'ozet'},
+            {'class': 'abstract'},
+            {'class': 'thesis-abstract'},
+            {'id': 'ozet'},
+            {'id': 'abstract'}
+        ]:
+            elem = soup.find(['div', 'section', 'p'], selector)
+            if elem:
+                text = elem.get_text().strip()
+                if len(text) > 100:
+                    abstract_text = normalize_turkish_text(text)
+                    logger.info(f"✓ Found abstract using selector: {selector}")
+                    break
+
+        # Method 2: Find by icon classes (YÖK sometimes uses Font Awesome icons)
+        if not abstract_text:
+            icon_classes = ['fa-align-left', 'fa-file-text', 'fa-paragraph']
+            for icon_class in icon_classes:
+                icon = soup.find('i', class_=icon_class)
+                if icon:
+                    parent = icon.find_parent(['div', 'section'])
+                    if parent:
+                        text = parent.get_text().strip()
+                        if 'özet' in text.lower() or 'abstract' in text.lower():
+                            # Extract text after the heading
+                            text_parts = text.split('\n', 1)
+                            if len(text_parts) > 1 and len(text_parts[1]) > 100:
+                                abstract_text = normalize_turkish_text(text_parts[1])
+                                logger.info(f"✓ Found abstract using icon class: {icon_class}")
+                                break
+
+        # Method 3: Find table rows with "Özet" label
+        if not abstract_text:
+            all_rows = soup.find_all('tr')
+            for row in all_rows:
                 cells = row.find_all(['td', 'th'])
                 if len(cells) >= 2:
-                    key = normalize_turkish_text(cells[0].get_text()).rstrip(':')
-                    value = normalize_turkish_text(cells[1].get_text())
+                    label = cells[0].get_text().strip().lower()
+                    if 'özet' in label or 'abstract' in label:
+                        text = cells[1].get_text().strip()
+                        if len(text) > 100:
+                            abstract_text = normalize_turkish_text(text)
+                            logger.info("✓ Found abstract in table row")
+                            break
 
-                    key_mapping = {
-                        'Tez No': 'thesis_id',
-                        'Tez Adı': 'title',
-                        'Yazar': 'author',
-                        'Danışman': 'advisor',
-                        'Eş Danışman': 'co_advisor',
-                        'Yıl': 'year',
-                        'Üniversite': 'university',
-                        'Enstitü': 'institute',
-                        'Anabilim Dalı': 'department',
-                        'Tez Türü': 'thesis_type',
-                        'Dil': 'language',
-                        'Sayfa Sayısı': 'page_count',
-                        'Anahtar Kelimeler': 'keywords',
-                    }
+        # Method 4: Search all text content with regex patterns
+        if not abstract_text:
+            all_text = soup.get_text()
 
-                    english_key = key_mapping.get(key, key.lower().replace(' ', '_'))
-                    if english_key in details:  # Only update if it's a known field
-                        details[english_key] = value
+            # Pattern 1: Turkish abstract
+            patterns = [
+                r'(?:Türkçe\s+)?Özet\s*:?\s*\n\s*(.+?)(?=\n\s*(?:İngilizce|Abstract|Amaç|Yöntem|Giriş|Kaynakça|$))',
+                r'(?:Turkish\s+)?Abstract\s*:?\s*\n\s*(.+?)(?=\n\s*(?:English|Özet|Purpose|Method|Introduction|References|$))',
+                r'Özet\s*:\s*(.+?)(?=\n\s*\n|\n\s*[A-ZÖÜÇĞİŞ])',
+                r'Abstract\s*:\s*(.+?)(?=\n\s*\n|\n\s*[A-Z])'
+            ]
 
-            except Exception as e:
-                logger.warning(f"Failed to parse detail row: {str(e)}")
-                continue
+            for pattern in patterns:
+                match = re.search(pattern, all_text, re.IGNORECASE | re.DOTALL)
+                if match:
+                    text = match.group(1).strip()
+                    # Clean up excessive whitespace
+                    text = re.sub(r'\s+', ' ', text)
+                    if len(text) > 100:
+                        abstract_text = normalize_turkish_text(text)
+                        logger.info(f"✓ Found abstract using regex pattern")
+                        break
 
-        # Extract abstract
-        abstract_div = soup.find('div', {'class': 'ozet'}) or soup.find('div', {'id': 'abstract'})
-        if abstract_div:
-            details['abstract'] = normalize_turkish_text(abstract_div.get_text())
+        # Method 5: Look for paragraphs after headings containing "Özet"
+        if not abstract_text:
+            headings = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'b'])
+            for heading in headings:
+                heading_text = heading.get_text().strip().lower()
+                if 'özet' in heading_text or 'abstract' in heading_text:
+                    # Get all next siblings until next heading
+                    content_parts = []
+                    for sibling in heading.find_next_siblings():
+                        if sibling.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                            break
+                        text = sibling.get_text().strip()
+                        if text:
+                            content_parts.append(text)
+
+                    combined_text = ' '.join(content_parts)
+                    if len(combined_text) > 100:
+                        abstract_text = normalize_turkish_text(combined_text)
+                        logger.info("✓ Found abstract after heading element")
+                        break
+
+        if abstract_text:
+            details['abstract'] = abstract_text
+            logger.info(f"✓ Abstract extracted: {len(abstract_text)} characters")
+        else:
+            logger.warning("⚠ Could not find abstract in detail page")
+
+        # === ENHANCED PURPOSE EXTRACTION ===
+        purpose_text = None
+        logger.info("Searching for purpose using multiple methods...")
+
+        # Method 1: Find table rows with "Amaç" label
+        all_rows = soup.find_all('tr')
+        for row in all_rows:
+            cells = row.find_all(['td', 'th'])
+            if len(cells) >= 2:
+                label = cells[0].get_text().strip().lower()
+                if 'amaç' in label or 'purpose' in label or 'objective' in label:
+                    text = cells[1].get_text().strip()
+                    if len(text) > 30:
+                        purpose_text = normalize_turkish_text(text)
+                        logger.info("✓ Found purpose in table row")
+                        break
+
+        # Method 2: Search with regex patterns
+        if not purpose_text:
+            all_text = soup.get_text()
+            patterns = [
+                r'(?:Çalışmanın\s+)?Amaç[ıi]?\s*:?\s*\n?\s*(.+?)(?=\n\s*(?:Yöntem|Gereç|Bulgular|Sonuç|Method|Material|Results|Conclusion|$))',
+                r'Purpose\s*:?\s*\n?\s*(.+?)(?=\n\s*(?:Method|Material|Results|Conclusion|Yöntem|$))',
+                r'Objective\s*:?\s*\n?\s*(.+?)(?=\n\s*(?:Method|Material|Results|$))'
+            ]
+
+            for pattern in patterns:
+                match = re.search(pattern, all_text, re.IGNORECASE | re.DOTALL)
+                if match:
+                    text = match.group(1).strip()
+                    # Clean up and take first reasonable chunk
+                    text = re.sub(r'\s+', ' ', text)
+                    # Take up to first double newline or 500 chars
+                    text = text.split('\n\n')[0][:500]
+                    if len(text) > 30:
+                        purpose_text = normalize_turkish_text(text)
+                        logger.info(f"✓ Found purpose using regex pattern")
+                        break
+
+        # Method 3: Look for headings with "Amaç"
+        if not purpose_text:
+            headings = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'b'])
+            for heading in headings:
+                heading_text = heading.get_text().strip().lower()
+                if 'amaç' in heading_text or 'purpose' in heading_text or 'objective' in heading_text:
+                    # Get next paragraph or div
+                    next_elem = heading.find_next(['p', 'div', 'span'])
+                    if next_elem:
+                        text = next_elem.get_text().strip()
+                        if len(text) > 30:
+                            purpose_text = normalize_turkish_text(text)
+                            logger.info("✓ Found purpose after heading element")
+                            break
+
+        if purpose_text:
+            details['purpose'] = purpose_text
+            logger.info(f"✓ Purpose extracted: {len(purpose_text)} characters")
+        else:
+            logger.warning("⚠ Could not find purpose in detail page")
 
         return details
 

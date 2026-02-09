@@ -23,7 +23,7 @@ const errorText = document.getElementById('errorText');
 let allResults = [];
 let totalFound = 0;
 let currentPage = 1;
-let pageSize = 50;
+let pageSize = 20;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -397,7 +397,8 @@ function displayThesisDetails(thesis) {
         { label: 'Dil', value: thesis.language, icon: 'fa-language' },
         { label: 'Sayfa Sayısı', value: thesis.page_count, icon: 'fa-file' },
         { label: 'Anahtar Kelimeler', value: thesis.keywords, icon: 'fa-tags', keywords: true },
-        { label: 'Özet', value: thesis.abstract, icon: 'fa-align-left', isAbstract: true }
+        { label: 'Özet', value: thesis.abstract, icon: 'fa-align-left', isAbstract: true },
+        { label: 'Amaç', value: thesis.purpose, icon: 'fa-bullseye', isAbstract: true }
     ];
 
     let html = '<div class="space-y-6">';
