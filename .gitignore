@@ -74,3 +74,5 @@ logs/
 
 # MCP specific
 mcp_cache/
+.vercel
+.env*.local
