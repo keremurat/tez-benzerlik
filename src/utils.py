@@ -14,13 +14,12 @@ from datetime import datetime, timedelta
 # Type variable for generic functions
 T = TypeVar('T')
 
-# Configure logging
+# Configure logging (Vercel-compatible: no file logging)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('yok_tez_mcp.log', encoding='utf-8'),
-        logging.StreamHandler()
+        logging.StreamHandler()  # Only console logging for Vercel
     ]
 )
 

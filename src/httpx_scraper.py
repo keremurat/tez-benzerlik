@@ -83,10 +83,31 @@ class HttpxYOKScraper:
             'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
             'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1'
+            'Upgrade-Insecure-Requests': '1',
+            'Referer': 'https://tez.yok.gov.tr/UlusalTezMerkezi/tarama.jsp'
         }
 
+        # Persistent client with cookie jar for session management
+        self._client = None
+
         logger.info("httpx YÖK Thesis Scraper initialized")
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create a persistent HTTP client with cookies."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=self.timeout,
+                follow_redirects=True,
+                headers=self.headers
+            )
+            # Visit the search page first to get session cookies
+            logger.info("Initializing session - visiting search page...")
+            try:
+                await self._client.get(self.SEARCH_URL)
+                logger.info("Session initialized with cookies")
+            except Exception as e:
+                logger.warning(f"Session init failed: {e}")
+        return self._client
 
     async def search(
         self,
@@ -144,25 +165,25 @@ class HttpxYOKScraper:
                 thesis_type, university, language, permission_status
             )
 
-            # Make POST request
-            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-                logger.info(f"Searching YÖK for: {query}")
-                response = await client.post(
-                    self.SEARCH_URL,
-                    data=form_data,
-                    headers=self.headers
-                )
-                response.raise_for_status()
+            # Use persistent client with session cookies
+            client = await self._get_client()
 
-                # Parse results
-                results = self._parse_search_results(response.text, max_results)
+            logger.info(f"Searching YÖK for: {query}")
+            response = await client.post(
+                self.SEARCH_URL,
+                data=form_data
+            )
+            response.raise_for_status()
 
-                # Cache results
-                if use_cache and results:
-                    await self.cache.set(cache_key, results)
+            # Parse results
+            results = self._parse_search_results(response.text, max_results)
 
-                logger.info(f"Found {len(results)} theses for query: {query}")
-                return results
+            # Cache results
+            if use_cache and results:
+                await self.cache.set(cache_key, results)
+
+            logger.info(f"Found {len(results)} theses for query: {query}")
+            return results
 
         except httpx.HTTPError as e:
             logger.error(f"HTTP error during search: {str(e)}")
@@ -321,27 +342,24 @@ class HttpxYOKScraper:
         await self.rate_limiter.wait()
 
         try:
-            # Try direct detail page URL
+            # Use persistent client with session cookies
+            client = await self._get_client()
             detail_url = f"{self.DETAIL_URL}?id={thesis_id}"
 
-            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-                logger.info(f"Fetching details for thesis: {thesis_id}")
-                response = await client.get(
-                    detail_url,
-                    headers=self.headers
-                )
+            logger.info(f"Fetching details for thesis: {thesis_id}")
+            response = await client.get(detail_url)
 
-                # YÖK may return errors or redirect for restricted theses
-                if response.status_code == 200:
-                    details = self._parse_thesis_detail(response.text, thesis_id)
-                else:
-                    logger.warning(f"Detail page returned status {response.status_code}")
-                    details = self._create_minimal_response(thesis_id)
+            # YÖK may return errors or redirect for restricted theses
+            if response.status_code == 200:
+                details = self._parse_thesis_detail(response.text, thesis_id)
+            else:
+                logger.warning(f"Detail page returned status {response.status_code}")
+                details = self._create_minimal_response(thesis_id)
 
-                if use_cache:
-                    await self.cache.set(cache_key, details)
+            if use_cache:
+                await self.cache.set(cache_key, details)
 
-                return details
+            return details
 
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching details: {str(e)}")
@@ -627,5 +645,8 @@ class HttpxYOKScraper:
 
     async def close(self) -> None:
         """Clean up resources."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
         await self.cache.clear()
         logger.info("httpx YÖK Thesis Scraper closed")
