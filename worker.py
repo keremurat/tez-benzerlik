@@ -1,6 +1,6 @@
 """
 Cloudflare Workers entry point for YOK Tez MCP Server
-Handles /tools, /mcp, /api/search, /api/thesis routes
+Tools: advanced_search, get_thesis_details
 """
 
 import json
@@ -19,36 +19,31 @@ except ImportError:
 
 TOOLS = [
     {
-        "name": "search_theses",
-        "description": "Search for theses in Turkey's YOK (Council of Higher Education) National Thesis Center database. Returns thesis ID, title, author, year, and type.",
+        "name": "advanced_search",
+        "description": "Perform advanced multi-criteria search with up to 3 keywords and boolean operators (AND, OR, NOT) in Turkey's YOK National Thesis Center.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "query": {
+                "keyword1": {"type": "string", "description": "First search keyword (required)"},
+                "searchField1": {
                     "type": "string",
-                    "description": "Search query (thesis title, author name, keyword, etc.)"
+                    "enum": ["1", "2", "3", "4", "5", "6", "7"],
+                    "default": "7",
+                    "description": "1=Title, 2=Author, 3=Advisor, 4=Subject, 5=Index, 6=Abstract, 7=All"
                 },
-                "search_field": {
-                    "type": "string",
-                    "description": "Field to search in",
-                    "enum": ["tez_adi", "yazar", "danisman", "konu", "tumu"],
-                    "default": "tumu"
-                },
-                "year_start": {
-                    "type": "integer",
-                    "description": "Filter by start year"
-                },
-                "year_end": {
-                    "type": "integer",
-                    "description": "Filter by end year"
-                },
-                "max_results": {
-                    "type": "integer",
-                    "description": "Maximum number of results to return",
-                    "default": 20
-                }
+                "operator2": {"type": "string", "enum": ["and", "or", "not"], "description": "Boolean operator for second keyword"},
+                "keyword2": {"type": "string", "description": "Second search keyword"},
+                "searchField2": {"type": "string", "description": "Search field for second keyword"},
+                "operator3": {"type": "string", "enum": ["and", "or", "not"], "description": "Boolean operator for third keyword"},
+                "keyword3": {"type": "string", "description": "Third search keyword"},
+                "searchField3": {"type": "string", "description": "Search field for third keyword"},
+                "yearFrom": {"type": "string", "description": "Start year filter"},
+                "yearTo": {"type": "string", "description": "End year filter"},
+                "thesisType": {"type": "string", "description": "Thesis type filter"},
+                "language": {"type": "string", "description": "Language filter"},
+                "university": {"type": "string", "description": "University filter"}
             },
-            "required": ["query"]
+            "required": ["keyword1"]
         }
     },
     {
@@ -84,98 +79,52 @@ BROWSER_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
     "Referer": "https://tez.yok.gov.tr/UlusalTezMerkezi/tarama.jsp",
-}
-
-FIELD_MAP = {
-    "tez_adi": "TezAd",
-    "yazar": "AdSoyad",
-    "danisman": "DanismanAdSoyad",
-    "konu": "Dizin",
-    "tumu": "keyword",
 }
 
 
 # ─── Worker Entry Point ─────────────────────────────────────────────
 
 class Default(WorkerEntrypoint):
-    """Cloudflare Workers entry point."""
 
     async def fetch(self, request):
         parsed = urlparse(request.url)
         path = parsed.path.rstrip("/") or "/"
         method = request.method
 
-        # CORS preflight
         if method == "OPTIONS":
             return Response(None, status=204, headers=CORS_HEADERS)
 
-        # Route: Server info
         if path == "/" and method == "GET":
             return self._json({
                 "name": "yok-tez-mcp",
                 "version": "2.0.0",
-                "description": "YOK Thesis Center MCP Server (Cloudflare Workers)",
+                "description": "YOK Thesis Center MCP Server",
                 "status": "online",
                 "endpoints": {
                     "tools": "/tools",
                     "mcp": "/mcp (POST)",
-                    "search": "/api/search?q=query",
-                    "thesis": "/api/thesis/{id}",
                 }
             })
 
-        # Route: List tools
         if path == "/tools" and method == "GET":
             return self._json({"tools": TOOLS})
 
-        # Route: MCP JSON-RPC protocol
         if path == "/mcp" and method == "POST":
             return await self._handle_mcp(request)
 
-        # Route: REST API - search
-        if path == "/api/search" and method == "GET":
-            params = parse_qs(parsed.query)
-            query = params.get("q", [""])[0]
-            if not query:
-                return self._json({"error": "Missing query parameter 'q'"}, 400)
-            search_field = params.get("field", ["tumu"])[0]
-            year_start = params.get("year_start", [None])[0]
-            year_end = params.get("year_end", [None])[0]
-            max_results = int(params.get("max_results", ["20"])[0])
-            results = await self._search_yok(query, search_field, year_start, year_end, max_results)
-            return self._json({"results": results, "total": len(results)})
-
-        # Route: REST API - thesis details
-        if path.startswith("/api/thesis/") and method == "GET":
-            thesis_id = path.split("/api/thesis/", 1)[1]
-            if thesis_id:
-                details = await self._get_thesis_detail(thesis_id)
-                return self._json(details)
-            return self._json({"error": "Missing thesis_id"}, 400)
-
-        # 404
-        return self._json({
-            "error": "Not found",
-            "available_endpoints": ["/", "/tools", "/mcp", "/api/search?q=...", "/api/thesis/{id}"]
-        }, 404)
-
-    # ─── Helpers ─────────────────────────────────────────────────────
+        return self._json({"error": "Not found"}, 404)
 
     def _json(self, data, status=200):
-        """Return a JSON response with CORS headers."""
         return Response(
             json.dumps(data, ensure_ascii=False, indent=2),
             status=status,
             headers=CORS_HEADERS
         )
 
-    # ─── MCP Protocol Handler ───────────────────────────────────────
+    # ─── MCP Protocol ───────────────────────────────────────────────
 
     async def _handle_mcp(self, request):
-        """Handle MCP JSON-RPC protocol requests."""
         try:
             body = await request.text()
             data = json.loads(body)
@@ -199,8 +148,7 @@ class Default(WorkerEntrypoint):
                 result = await self._call_tool(tool_name, arguments)
             else:
                 return self._json({
-                    "jsonrpc": jsonrpc,
-                    "id": request_id,
+                    "jsonrpc": jsonrpc, "id": request_id,
                     "error": {"code": -32601, "message": f"Unknown method: {method}"}
                 })
 
@@ -208,67 +156,66 @@ class Default(WorkerEntrypoint):
 
         except Exception as e:
             return self._json({
-                "jsonrpc": "2.0",
-                "id": None,
+                "jsonrpc": "2.0", "id": None,
                 "error": {"code": -32603, "message": str(e)}
             }, 500)
 
     async def _call_tool(self, tool_name, arguments):
-        """Execute a tool by name."""
-        if tool_name == "search_theses":
-            query = arguments.get("query", "")
-            results = await self._search_yok(
-                query=query,
-                search_field=arguments.get("search_field", "tumu"),
-                year_start=arguments.get("year_start"),
-                year_end=arguments.get("year_end"),
-                max_results=arguments.get("max_results", 20),
-            )
-            if not results:
-                text = f"No theses found for: {query}"
-            else:
-                text = f"Found {len(results)} theses:\n\n"
-                for i, t in enumerate(results, 1):
-                    text += f"{i}. {t.get('title', 'N/A')}\n"
-                    text += f"   ID: {t.get('thesis_id')}, Author: {t.get('author')}\n"
-                    text += f"   Year: {t.get('year')}, Type: {t.get('thesis_type')}\n\n"
-            return {"content": [{"type": "text", "text": text}]}
-
+        if tool_name == "advanced_search":
+            return await self._advanced_search(arguments)
         elif tool_name == "get_thesis_details":
-            thesis_id = arguments.get("thesis_id", "")
-            details = await self._get_thesis_detail(thesis_id)
-            if not details or details.get("title") == "Detaylar yuklenemedi":
-                text = f"Thesis {thesis_id} not found"
-            else:
-                text = f"# Thesis {thesis_id}: {details.get('title')}\n\n"
-                text += f"**Author:** {details.get('author')}\n"
-                text += f"**Year:** {details.get('year')}\n"
-                text += f"**University:** {details.get('university')}\n\n"
-                if details.get("abstract"):
-                    text += f"**Abstract:** {details['abstract'][:500]}...\n"
-            return {"content": [{"type": "text", "text": text}]}
-
+            return await self._get_thesis_details_tool(arguments)
         return {"content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}]}
 
-    # ─── YOK Scraper ────────────────────────────────────────────────
+    # ─── Tool Implementations ────────────────────────────────────────
+
+    async def _advanced_search(self, args):
+        keyword1 = args.get("keyword1", "")
+        if not keyword1:
+            return {"content": [{"type": "text", "text": "keyword1 is required"}]}
+
+        results = await self._search_yok(
+            query=keyword1,
+            year_start=args.get("yearFrom"),
+            year_end=args.get("yearTo"),
+        )
+
+        if not results:
+            text = f"No theses found for: {keyword1}"
+        else:
+            text = f"Found {len(results)} theses:\n\n"
+            for i, t in enumerate(results, 1):
+                text += f"{i}. {t.get('title', 'N/A')}\n"
+                text += f"   ID: {t.get('thesis_id')}, Author: {t.get('author')}\n"
+                text += f"   Year: {t.get('year')}, Type: {t.get('thesis_type')}\n\n"
+        return {"content": [{"type": "text", "text": text}]}
+
+    async def _get_thesis_details_tool(self, args):
+        thesis_id = args.get("thesis_id", "")
+        details = await self._get_thesis_detail(thesis_id)
+        if not details or details.get("title") == "Detaylar yuklenemedi":
+            text = f"Thesis {thesis_id} not found"
+        else:
+            text = f"# Thesis {thesis_id}: {details.get('title')}\n\n"
+            text += f"**Author:** {details.get('author')}\n"
+            text += f"**Year:** {details.get('year')}\n"
+            text += f"**University:** {details.get('university')}\n\n"
+            if details.get("abstract"):
+                text += f"**Abstract:** {details['abstract'][:500]}...\n"
+        return {"content": [{"type": "text", "text": text}]}
+
+    # ─── YOK Fetch ───────────────────────────────────────────────────
 
     async def _fetch_with_cookies(self, url, method="GET", body=None, extra_headers=None):
-        """Make an HTTP request to YOK with session cookie handling."""
-        from js import fetch, Object, Headers
+        from js import fetch, Object
         from pyodide.ffi import to_js as _to_js
 
         def to_js(obj):
             return _to_js(obj, dict_converter=Object.fromEntries)
 
-        # Step 1: Visit the search page to get session cookies
-        init_opts = to_js({
-            "method": "GET",
-            "headers": BROWSER_HEADERS,
-            "redirect": "manual",
-        })
+        init_opts = to_js({"method": "GET", "headers": BROWSER_HEADERS, "redirect": "manual"})
         init_resp = await fetch(SEARCH_URL, init_opts)
 
-        # Extract Set-Cookie headers
         cookies = ""
         try:
             raw_cookies = init_resp.headers.get("set-cookie")
@@ -277,7 +224,6 @@ class Default(WorkerEntrypoint):
         except Exception:
             pass
 
-        # Step 2: Make the actual request with cookies
         headers = {**BROWSER_HEADERS}
         if cookies:
             headers["Cookie"] = cookies
@@ -289,212 +235,107 @@ class Default(WorkerEntrypoint):
             opts["body"] = body
 
         response = await fetch(url, to_js(opts))
-        html = await response.text()
-        return html
+        return await response.text()
 
-    async def _search_yok(self, query, search_field="tumu", year_start=None, year_end=None, max_results=20):
-        """Search YOK thesis database."""
+    async def _search_yok(self, query, year_start=None, year_end=None, max_results=20):
         try:
-            input_field = FIELD_MAP.get(search_field, "keyword")
-
-            # Build form data
-            form_parts = [f"{input_field}={quote(str(query))}", "-find=Bul", "submitted=1"]
+            form_parts = [f"keyword={quote(str(query))}", "-find=Bul", "submitted=1"]
             if year_start:
                 form_parts.append(f"yil1={year_start}")
             if year_end:
                 form_parts.append(f"yil2={year_end}")
-            form_body = "&".join(form_parts)
 
             html = await self._fetch_with_cookies(
-                SEARCH_URL,
-                method="POST",
-                body=form_body,
+                SEARCH_URL, method="POST", body="&".join(form_parts),
                 extra_headers={"Content-Type": "application/x-www-form-urlencoded"}
             )
-
             return _parse_search_results(html, max_results)
-
         except Exception as e:
             return [{"error": str(e)}]
 
     async def _get_thesis_detail(self, thesis_id):
-        """Get thesis details by ID."""
         try:
             html = await self._fetch_with_cookies(f"{DETAIL_URL}?id={thesis_id}")
             return _parse_thesis_detail(html, thesis_id)
         except Exception as e:
-            return {
-                "thesis_id": thesis_id,
-                "title": "Detaylar yuklenemedi",
-                "error": str(e)
-            }
+            return {"thesis_id": thesis_id, "title": "Detaylar yuklenemedi", "error": str(e)}
 
 
-# ─── HTML Parsers (module-level functions) ───────────────────────────
+# ─── HTML Parsers ────────────────────────────────────────────────────
 
 def _normalize(text):
-    """Normalize text: strip whitespace, collapse spaces."""
     if not text:
         return ""
     return " ".join(text.strip().split())
 
 
 def _parse_search_results(html, max_results=20):
-    """Parse search results from YOK HTML response."""
     results = []
-
     if HAS_BS4:
         soup = BeautifulSoup(html, "html.parser")
-        table = (
-            soup.find("table", class_="watable")
-            or soup.find("table", class_="table-striped")
-            or soup.find("table", {"class": "tablo"})
-            or soup.find("table", {"id": "resulttable"})
-        )
-
+        table = soup.find("table", class_="watable") or soup.find("table", class_="table-striped")
         if not table:
             return results
-
         tbody = table.find("tbody")
         if not tbody:
             return results
-
-        rows = tbody.find_all("tr")
-        for row in rows[:max_results]:
+        for row in tbody.find_all("tr")[:max_results]:
             try:
                 cells = row.find_all("td")
                 if len(cells) < 6:
                     continue
-
                 thesis_id = None
                 span = cells[1].find("span")
                 if span:
-                    onclick = span.get("onclick", "")
-                    id_match = re.search(r"tezDetay\('(\d+)'\)", onclick)
-                    if id_match:
-                        thesis_id = id_match.group(1)
-
+                    m = re.search(r"tezDetay\('(\d+)'\)", span.get("onclick", ""))
+                    if m:
+                        thesis_id = m.group(1)
                 if not thesis_id:
                     thesis_id = _normalize(cells[1].get_text())
-
                 results.append({
                     "thesis_id": thesis_id,
-                    "author": _normalize(cells[2].get_text()) if len(cells) > 2 else "",
-                    "year": _normalize(cells[3].get_text()) if len(cells) > 3 else None,
-                    "title": _normalize(cells[4].get_text()) if len(cells) > 4 else "",
-                    "thesis_type": _normalize(cells[5].get_text()) if len(cells) > 5 else None,
+                    "author": _normalize(cells[2].get_text()),
+                    "year": _normalize(cells[3].get_text()),
+                    "title": _normalize(cells[4].get_text()),
+                    "thesis_type": _normalize(cells[5].get_text()),
                 })
             except Exception:
                 continue
-    else:
-        # Fallback: regex parsing when BeautifulSoup is not available
-        row_pattern = r"<tr[^>]*>(.*?)</tr>"
-        rows = re.findall(row_pattern, html, re.DOTALL)
-        for row_html in rows:
-            cells = re.findall(r"<td[^>]*>(.*?)</td>", row_html, re.DOTALL)
-            if len(cells) >= 6:
-                thesis_id_match = re.search(r"tezDetay\('(\d+)'\)", cells[1])
-                thesis_id = thesis_id_match.group(1) if thesis_id_match else re.sub(r"<[^>]+>", "", cells[1]).strip()
-
-                results.append({
-                    "thesis_id": thesis_id,
-                    "author": re.sub(r"<[^>]+>", "", cells[2]).strip(),
-                    "year": re.sub(r"<[^>]+>", "", cells[3]).strip(),
-                    "title": re.sub(r"<[^>]+>", "", cells[4]).strip(),
-                    "thesis_type": re.sub(r"<[^>]+>", "", cells[5]).strip(),
-                })
-
-                if len(results) >= max_results:
-                    break
-
     return results
 
 
 def _parse_thesis_detail(html, thesis_id):
-    """Parse thesis detail page."""
     details = {
-        "thesis_id": thesis_id,
-        "title": None,
-        "author": None,
-        "advisor": None,
-        "year": None,
-        "university": None,
-        "institute": None,
-        "department": None,
-        "thesis_type": None,
-        "language": None,
-        "page_count": None,
-        "keywords": None,
-        "abstract": None,
+        "thesis_id": thesis_id, "title": None, "author": None, "advisor": None,
+        "year": None, "university": None, "institute": None, "department": None,
+        "thesis_type": None, "language": None, "page_count": None,
+        "keywords": None, "abstract": None,
     }
-
-    key_mapping = {
-        "tez no": "thesis_id",
-        "tez adi": "title",
-        "tez adı": "title",
-        "yazar": "author",
-        "danisman": "advisor",
-        "danışman": "advisor",
-        "yil": "year",
-        "yıl": "year",
-        "universite": "university",
-        "üniversite": "university",
-        "enstitu": "institute",
-        "enstitü": "institute",
-        "anabilim dali": "department",
-        "anabilim dalı": "department",
-        "tez turu": "thesis_type",
-        "tez türü": "thesis_type",
-        "dil": "language",
-        "sayfa sayisi": "page_count",
-        "sayfa sayısı": "page_count",
+    key_map = {
+        "tez no": "thesis_id", "tez adı": "title", "tez adi": "title",
+        "yazar": "author", "danışman": "advisor", "danisman": "advisor",
+        "yıl": "year", "yil": "year", "üniversite": "university",
+        "universite": "university", "enstitü": "institute", "enstitu": "institute",
+        "anabilim dalı": "department", "anabilim dali": "department",
+        "tez türü": "thesis_type", "tez turu": "thesis_type",
+        "dil": "language", "sayfa sayısı": "page_count", "sayfa sayisi": "page_count",
         "anahtar kelimeler": "keywords",
     }
-
     if HAS_BS4:
         soup = BeautifulSoup(html, "html.parser")
-
-        detail_table = (
-            soup.find("table", {"class": "bilgi"})
-            or soup.find("div", {"class": "thesis-detail"})
-            or soup.find("div", {"id": "iceriktablo"})
-        )
-
-        if detail_table:
-            for row in detail_table.find_all("tr"):
+        dt = soup.find("table", {"class": "bilgi"}) or soup.find("div", {"id": "iceriktablo"})
+        if dt:
+            for row in dt.find_all("tr"):
                 cells = row.find_all(["td", "th"])
                 if len(cells) >= 2:
-                    key = _normalize(cells[0].get_text()).rstrip(":").lower()
-                    value = _normalize(cells[1].get_text())
-                    english_key = key_mapping.get(key)
-                    if english_key and english_key in details:
-                        details[english_key] = value
-
-        # Extract abstract
-        for selector in [{"class": "ozet"}, {"class": "abstract"}, {"id": "ozet"}, {"id": "abstract"}]:
-            elem = soup.find(["div", "p", "section"], selector)
-            if elem:
-                text = elem.get_text().strip()
-                if len(text) > 100:
-                    details["abstract"] = _normalize(text)
-                    break
-
-        if not details["abstract"]:
-            for row in soup.find_all("tr"):
-                cells = row.find_all(["td", "th"])
-                if len(cells) >= 2:
-                    label = cells[0].get_text().strip().lower()
-                    if "ozet" in label or "özet" in label or "abstract" in label:
-                        text = cells[1].get_text().strip()
-                        if len(text) > 100:
-                            details["abstract"] = _normalize(text)
-                            break
-    else:
-        # Regex fallback
-        for key_tr, key_en in key_mapping.items():
-            pattern = rf"{re.escape(key_tr)}\s*:?\s*</(?:td|th)>\s*<td[^>]*>(.*?)</td>"
-            match = re.search(pattern, html, re.IGNORECASE | re.DOTALL)
-            if match:
-                details[key_en] = re.sub(r"<[^>]+>", "", match.group(1)).strip()
-
+                    k = _normalize(cells[0].get_text()).rstrip(":").lower()
+                    v = _normalize(cells[1].get_text())
+                    ek = key_map.get(k)
+                    if ek and ek in details:
+                        details[ek] = v
+        for sel in [{"class": "ozet"}, {"class": "abstract"}, {"id": "ozet"}]:
+            elem = soup.find(["div", "p"], sel)
+            if elem and len(elem.get_text().strip()) > 100:
+                details["abstract"] = _normalize(elem.get_text())
+                break
     return details
