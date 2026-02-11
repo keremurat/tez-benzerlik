@@ -1,0 +1,17 @@
+venv/
+.git/
+.claude/
+.wrangler/
+cloudflare/
+frontend/
+backend/
+__pycache__/
+*.log
+*.md
+*.sh
+.env*
+.gitignore
+.dockerignore
+Dockerfile
+LICENSE
+pyproject.toml

@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-YOK National Thesis Center MCP Server (Local - Selenium)
-Tools: advanced_search, get_thesis_details
+YOK National Thesis Center MCP Server (Selenium)
+Supports both STDIO (local) and SSE/HTTP (Railway) transport.
+
+Usage:
+  Local:   python server.py
+  Railway: PORT=8080 python server.py
 """
 
+import os
 import asyncio
 import logging
 from typing import Any, Dict, Optional
@@ -180,14 +185,59 @@ async def get_thesis_details_tool(args: Dict[str, Any]) -> list[TextContent]:
 
 
 async def main():
-    from mcp.server.stdio import stdio_server
+    port = os.environ.get("PORT")
 
-    async with stdio_server() as (read_stream, write_stream):
-        await app.run(
-            read_stream,
-            write_stream,
-            app.create_initialization_options()
+    if port:
+        # HTTP/SSE mode (Railway, cloud deployment)
+        from mcp.server.sse import SseServerTransport
+        from starlette.applications import Starlette
+        from starlette.routing import Route, Mount
+        from starlette.responses import JSONResponse
+        import uvicorn
+
+        sse = SseServerTransport("/messages/")
+
+        async def handle_sse(request):
+            async with sse.connect_sse(
+                request.scope, request.receive, request._send
+            ) as streams:
+                await app.run(
+                    streams[0], streams[1], app.create_initialization_options()
+                )
+
+        async def handle_info(request):
+            return JSONResponse({
+                "name": "yok-tez-mcp",
+                "version": "2.0.0",
+                "description": "YOK Thesis Center MCP Server",
+                "status": "online",
+                "transport": "sse",
+                "endpoints": {
+                    "sse": "/sse",
+                    "messages": "/messages/"
+                }
+            })
+
+        starlette_app = Starlette(
+            routes=[
+                Route("/", handle_info),
+                Route("/sse", endpoint=handle_sse),
+                Mount("/messages/", app=sse.handle_post_message),
+            ]
         )
+
+        logger.info(f"Starting SSE server on port {port}")
+        uvicorn.run(starlette_app, host="0.0.0.0", port=int(port))
+    else:
+        # STDIO mode (local use)
+        from mcp.server.stdio import stdio_server
+
+        async with stdio_server() as (read_stream, write_stream):
+            await app.run(
+                read_stream,
+                write_stream,
+                app.create_initialization_options()
+            )
 
 
 if __name__ == "__main__":
